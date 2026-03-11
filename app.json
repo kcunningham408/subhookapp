@@ -14,7 +14,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecmd.subhook",
-      "buildNumber": "8",
+      "buildNumber": "14",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -26,16 +26,7 @@
       },
       "package": "com.vibecmd.subhook"
     },
-    "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ]
-    ],
+    "runtimeVersion": "1.0.0",
     "extra": {
       "eas": {
         "projectId": "fb7c3352-19e5-4b31-b414-00e56cdcc429"

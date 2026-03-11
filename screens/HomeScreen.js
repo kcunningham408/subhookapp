@@ -1,13 +1,18 @@
-import { signOut } from 'firebase/auth';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { auth } from '../services/firebase';
+import { logout } from '../services/api';
 
-export default function HomeScreen() {
+export default function HomeScreen({ user, setUser }) {
+  const handleLogout = async () => {
+    await logout();
+    setUser(null);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>⚾ SubHook</Text>
-      <Text style={styles.sub}>You're in! More features coming soon.</Text>
-      <TouchableOpacity style={styles.btn} onPress={() => signOut(auth)}>
+      <Text style={styles.sub}>Hey {user?.name?.split(' ')[0] || 'there'} 👋</Text>
+      <Text style={styles.sub}>More features coming soon.</Text>
+      <TouchableOpacity style={styles.btn} onPress={handleLogout}>
         <Text style={styles.btnText}>Sign Out</Text>
       </TouchableOpacity>
     </View>

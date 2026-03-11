@@ -1,4 +1,3 @@
-import { signInWithPhoneNumber } from 'firebase/auth';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,41 +9,59 @@ import {
     TextInput,
     TouchableOpacity,
 } from 'react-native';
-import { auth } from '../services/firebase';
+import { login, register, resetPassword } from '../services/api';
 
-export default function LoginScreen() {
+export default function LoginScreen({ onLogin }) {
+  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const sendCode = async () => {
+  const handleSubmit = async () => {
     const digits = phone.replace(/\D/g, '');
-    const formatted = phone.trim().startsWith('+') ? phone.trim() : `+1${digits}`;
     if (digits.length < 10) {
       return Alert.alert('Invalid Number', 'Please enter a valid phone number.');
     }
+    if (!password || password.length < 6) {
+      return Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
+    }
+    if (mode === 'register' && !name.trim()) {
+      return Alert.alert('Name Required', 'Please enter your name.');
+    }
+
     setLoading(true);
     try {
-      const result = await signInWithPhoneNumber(auth, formatted);
-      setConfirmation(result);
+      let user;
+      if (mode === 'register') {
+        user = await register(phone, password, name.trim());
+      } else {
+        user = await login(phone, password);
+      }
+      onLogin(user);
     } catch (e) {
-      Alert.alert('Error', e.message || 'Could not send code. Please try again.');
+      Alert.alert('Error', e.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   };
 
-  const confirmCode = async () => {
-    if (!code || code.length !== 6) {
-      return Alert.alert('Invalid Code', 'Please enter the 6-digit code.');
+  const handleReset = async () => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10) {
+      return Alert.alert('Invalid Number', 'Please enter your phone number first.');
+    }
+    if (!password || password.length < 6) {
+      return Alert.alert('Invalid Password', 'New password must be at least 6 characters.');
     }
     setLoading(true);
     try {
-      await confirmation.confirm(code);
-      // onAuthStateChanged in App.js handles navigation
+      await resetPassword(phone, password);
+      Alert.alert('Success', 'Password updated! You can now sign in.');
+      setMode('login');
+      setPassword('');
     } catch (e) {
-      Alert.alert('Wrong Code', 'That code did not match. Try again.');
+      Alert.alert('Error', e.message || 'Could not reset password.');
     } finally {
       setLoading(false);
     }
@@ -58,47 +75,65 @@ export default function LoginScreen() {
       <Text style={styles.logo}>⚾ SubHook</Text>
       <Text style={styles.tagline}>Softball's free agency platform</Text>
 
-      {!confirmation ? (
+      {mode === 'register' && (
         <>
-          <Text style={styles.label}>Phone Number</Text>
+          <Text style={styles.label}>Your Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="+1 (555) 000-0000"
+            placeholder="John Smith"
             placeholderTextColor="#475569"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            autoFocus
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
           />
-          <TouchableOpacity style={styles.btn} onPress={sendCode} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Send Code</Text>}
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <Text style={styles.label}>6-Digit Code</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="123456"
-            placeholderTextColor="#475569"
-            value={code}
-            onChangeText={setCode}
-            keyboardType="number-pad"
-            maxLength={6}
-            autoFocus
-          />
-          <TouchableOpacity style={styles.btn} onPress={confirmCode} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Verify</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setConfirmation(null)}>
-            <Text style={styles.back}>← Change number</Text>
-          </TouchableOpacity>
         </>
       )}
+
+      <Text style={styles.label}>Phone Number</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="(555) 000-0000"
+        placeholderTextColor="#475569"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+      />
+
+      <Text style={styles.label}>{mode === 'reset' ? 'New Password' : 'Password'}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="••••••"
+        placeholderTextColor="#475569"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+
+      {mode === 'reset' ? (
+        <TouchableOpacity style={styles.btn} onPress={handleReset} disabled={loading}>
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnText}>Reset Password</Text>}
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
+          {loading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnText}>{mode === 'login' ? 'Sign In' : 'Create Account'}</Text>}
+        </TouchableOpacity>
+      )}
+
+      {mode === 'login' && (
+        <TouchableOpacity onPress={() => { setMode('reset'); setPassword(''); }}>
+          <Text style={styles.link}>Forgot Password?</Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity onPress={() => { setMode(mode === 'register' ? 'login' : mode === 'reset' ? 'login' : 'register'); setPassword(''); setName(''); }}>
+        <Text style={styles.back}>
+          {mode === 'login' ? "Don't have an account? Sign Up" : 'Back to Sign In'}
+        </Text>
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -158,6 +193,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 20,
+    fontSize: 14,
+  },
+  link: {
+    color: '#2563eb',
+    textAlign: 'center',
+    marginTop: 16,
     fontSize: 14,
   },
 });
