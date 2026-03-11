@@ -2,14 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { getStoredUser, logout, saveProfile, setActiveNow } from '../services/api';
+import { getStoredUser, logout, saveProfile, setActiveNow, deleteAccount } from '../services/api';
 
 const POSITIONS = ['Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
@@ -76,13 +76,13 @@ export default function ProfileScreen({ navigation, route }) {
     });
     if (result.canceled) return;
     try {
-      const manipulated = await manipulateAsync(
-        result.assets[0].uri,
-        [{ resize: { width: 200, height: 200 } }],
-        { compress: 0.7, format: SaveFormat.JPEG, base64: true }
-      );
-      setPhotoBase64(manipulated.base64);
+      const ref = ImageManipulator.manipulate(result.assets[0].uri);
+      ref.resize({ width: 200, height: 200 });
+      const manipulated = await ref.renderAsync();
+      const finalImage = await manipulated.saveAsync({ compress: 0.7, format: SaveFormat.JPEG, base64: true });
+      setPhotoBase64(finalImage.base64);
     } catch (e) {
+      console.warn('Image manipulate error:', e);
       Alert.alert('Error', 'Could not process image.');
     }
   };
@@ -105,9 +105,33 @@ export default function ProfileScreen({ navigation, route }) {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    setUser(null);
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => {
+        await logout();
+        setUser(null);
+      }},
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await deleteAccount();
+            await logout();
+            setUser(null);
+          } catch (e) {
+            Alert.alert('Error', e.message);
+          }
+        }},
+      ]
+    );
   };
 
   const toggleActive = async () => {
@@ -295,6 +319,12 @@ export default function ProfileScreen({ navigation, route }) {
         <Ionicons name="log-out-outline" size={18} color="#ef4444" />
         <Text style={s.logoutText}>Sign Out</Text>
       </TouchableOpacity>
+
+      {/* Delete Account */}
+      <TouchableOpacity style={s.deleteBtn} onPress={handleDeleteAccount}>
+        <Ionicons name="trash-outline" size={16} color="#64748b" />
+        <Text style={s.deleteText}>Delete Account</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -377,4 +407,9 @@ const s = StyleSheet.create({
     marginTop: 20, paddingVertical: 14, marginBottom: 20,
   },
   logoutText: { color: '#ef4444', fontSize: 15, fontWeight: '600' },
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginBottom: 40, paddingVertical: 10,
+  },
+  deleteText: { color: '#64748b', fontSize: 13, fontWeight: '500' },
 });

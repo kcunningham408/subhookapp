@@ -74,6 +74,10 @@ export const logout = async () => {
   await AsyncStorage.removeItem(USER_KEY);
 };
 
+export const deleteAccount = async () => {
+  return apiRequest('/auth/delete-account', { method: 'DELETE' });
+};
+
 // ── User ────────────────────────────────────────────────────────────────────
 
 export const updateUser = async (data) => {

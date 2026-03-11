@@ -22,6 +22,7 @@ import RoleSelectScreen from './screens/RoleSelectScreen';
 import SearchScreen from './screens/SearchScreen';
 
 import { getStoredUser, getConversations, registerPushToken } from './services/api';
+import { CommonActions } from '@react-navigation/native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -44,6 +45,7 @@ const TAB_ICONS = {
 };
 
 function MainTabs({ user, setUser }) {
+  if (!user) return null;
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refreshUnread = useCallback(async () => {
