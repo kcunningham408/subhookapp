@@ -18,7 +18,6 @@ export default function RoleSelectScreen({ navigation, route }) {
     try {
       await updateUser({ role });
       setUser({ ...user, role });
-      navigation.navigate('Onboarding');
     } catch (e) {
       console.warn('Role update failed', e);
     }

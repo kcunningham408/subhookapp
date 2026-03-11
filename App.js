@@ -181,7 +181,8 @@ export default function App() {
     );
   }
 
-  const needsOnboarding = user && !user.onboardingComplete;
+  const needsRole = user && !user.onboardingComplete && !user.role;
+  const needsOnboarding = user && !user.onboardingComplete && !!user.role;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -191,15 +192,14 @@ export default function App() {
             <Stack.Screen name="Login">
               {(props) => <LoginScreen {...props} onLogin={(data) => setUser(data.user)} />}
             </Stack.Screen>
+          ) : needsRole ? (
+            <Stack.Screen name="RoleSelect">
+              {(props) => <RoleSelectScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
+            </Stack.Screen>
           ) : needsOnboarding ? (
-            <>
-              <Stack.Screen name="RoleSelect">
-                {(props) => <RoleSelectScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
-              </Stack.Screen>
-              <Stack.Screen name="Onboarding">
-                {(props) => <OnboardingScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
-              </Stack.Screen>
-            </>
+            <Stack.Screen name="Onboarding">
+              {(props) => <OnboardingScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
+            </Stack.Screen>
           ) : (
             <>
               <Stack.Screen name="MainTabs">
