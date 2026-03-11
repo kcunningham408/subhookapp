@@ -10,7 +10,6 @@ import { getConversations } from '../services/api';
 
 export default function MessagesScreen({ navigation, route }) {
   const { user } = route.params;
-  if (!user) return null;
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,9 +28,11 @@ export default function MessagesScreen({ navigation, route }) {
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      if (user) load();
+    }, [load, user])
   );
+
+  if (!user) return null;
 
   const getOtherName = (convo) => {
     const otherId = convo.participants?.find((p) => p !== user.uid);

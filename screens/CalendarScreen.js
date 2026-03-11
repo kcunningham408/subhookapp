@@ -17,7 +17,6 @@ const STATUS_CONFIG = {
 
 export default function CalendarScreen({ navigation, route }) {
   const { user } = route.params;
-  if (!user) return null;
   const [created, setCreated] = useState([]);
   const [accepted, setAccepted] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +35,9 @@ export default function CalendarScreen({ navigation, route }) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
+
+  if (!user) return null;
 
   const onRefresh = () => { setRefreshing(true); load(); };
 

@@ -17,7 +17,6 @@ const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competi
 
 export default function ProfileScreen({ navigation, route }) {
   const { user, setUser } = route.params;
-  if (!user) return null;
   const [profile, setProfile] = useState(null);
   const [positions, setPositions] = useState([]);
   const [skillLevel, setSkillLevel] = useState('');
@@ -25,7 +24,7 @@ export default function ProfileScreen({ navigation, route }) {
   const [homeZip, setHomeZip] = useState('');
   const [teamName, setTeamName] = useState('');
   const [teamColor, setTeamColor] = useState('');
-  const [isActive, setIsActive] = useState(user.activeNow || false);
+  const [isActive, setIsActive] = useState(user?.activeNow || false);
   const [freeAgent, setFreeAgent] = useState(true);
   const [photoBase64, setPhotoBase64] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +32,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   useFocusEffect(
     useCallback(() => {
+      if (!user) return;
       (async () => {
         try {
           const res = await getStoredUser();
@@ -54,8 +54,10 @@ export default function ProfileScreen({ navigation, route }) {
           setLoading(false);
         }
       })();
-    }, [])
+    }, [user])
   );
+
+  if (!user) return null;
 
   const togglePos = (p) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

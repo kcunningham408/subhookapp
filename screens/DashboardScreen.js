@@ -10,16 +10,15 @@ import { getActiveNow, getBroadcasts, setActiveNow } from '../services/api';
 
 export default function DashboardScreen({ navigation, route }) {
   const { user, setUser } = route.params;
-  if (!user) return null;
-  const isManager = user.role === 'manager' || user.role === 'both';
-  const isPlayer = user.role === 'player' || user.role === 'both';
-
   const [myBroadcasts, setMyBroadcasts] = useState([]);
   const [feed, setFeed] = useState([]);
   const [activeUsers, setActiveUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [isActive, setIsActive] = useState(user.activeNow || false);
+  const [isActive, setIsActive] = useState(user?.activeNow || false);
+
+  const isManager = user?.role === 'manager' || user?.role === 'both';
+  const isPlayer = user?.role === 'player' || user?.role === 'both';
 
   const load = useCallback(async () => {
     try {
@@ -39,7 +38,9 @@ export default function DashboardScreen({ navigation, route }) {
     }
   }, [isPlayer]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
+
+  if (!user) return null;
 
   const onRefresh = () => { setRefreshing(true); load(); };
 

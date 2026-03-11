@@ -20,7 +20,6 @@ const SKILL_COLORS = {
 
 export default function SearchScreen({ navigation, route }) {
   const { user } = route.params;
-  if (!user) return null;
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
@@ -84,7 +83,9 @@ export default function SearchScreen({ navigation, route }) {
     }
   }, [filter, activeOnly, computeDistances]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
+
+  if (!user) return null;
 
   const onRefresh = () => { setRefreshing(true); load().finally(() => setRefreshing(false)); };
 

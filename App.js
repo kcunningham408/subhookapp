@@ -45,22 +45,25 @@ const TAB_ICONS = {
 };
 
 function MainTabs({ user, setUser }) {
-  if (!user) return null;
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refreshUnread = useCallback(async () => {
+    if (!user) return;
     try {
       const res = await getConversations();
       const total = (res.conversations || []).reduce((sum, c) => sum + (c.unreadCount || 0), 0);
       setUnreadCount(total);
     } catch {}
-  }, []);
+  }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     refreshUnread();
     const interval = setInterval(refreshUnread, 30000);
     return () => clearInterval(interval);
-  }, [refreshUnread]);
+  }, [refreshUnread, user]);
+
+  if (!user) return null;
 
   return (
     <Tab.Navigator
