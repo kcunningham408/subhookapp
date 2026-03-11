@@ -55,10 +55,17 @@ export const getStoredUser = async () => {
   }
 };
 
-export const resetPassword = async (phone, newPassword) => {
+export const resetPassword = async (phone, newPassword, code) => {
   return apiRequest('/auth/reset-password', {
     method: 'POST',
-    body: { phone, newPassword },
+    body: { phone, newPassword, code },
+  });
+};
+
+export const requestResetCode = async (phone) => {
+  return apiRequest('/auth/request-reset-code', {
+    method: 'POST',
+    body: { phone },
   });
 };
 
@@ -118,6 +125,14 @@ export const cancelBroadcast = async (id) => {
   return apiRequest(`/broadcasts/${id}/cancel`, { method: 'POST' });
 };
 
+export const closeBroadcast = async (id) => {
+  return apiRequest(`/broadcasts/${id}/close`, { method: 'POST' });
+};
+
+export const getMyGames = async () => {
+  return apiRequest('/broadcasts/my-games');
+};
+
 // ── Messages ────────────────────────────────────────────────────────────────
 
 export const getOrCreateConversation = async (otherUserId) => {
@@ -144,7 +159,79 @@ export const getMessages = async (convoId) => {
 
 // ── Search ──────────────────────────────────────────────────────────────────
 
-export const searchPlayers = async (position) => {
-  const params = position ? `?position=${encodeURIComponent(position)}` : '';
-  return apiRequest(`/search/players${params}`);
+export const searchPlayers = async (position, activeOnly = false) => {
+  const params = new URLSearchParams();
+  if (position) params.append('position', position);
+  if (activeOnly) params.append('activeOnly', 'true');
+  const qs = params.toString();
+  return apiRequest(`/search/players${qs ? '?' + qs : ''}`);
+};
+
+// ── Active Now ──────────────────────────────────────────────────────────────
+
+export const setActiveNow = async (active) => {
+  return apiRequest('/active-now', { method: 'POST', body: { active } });
+};
+
+export const getActiveNow = async () => {
+  return apiRequest('/active-now');
+};
+
+// ── Push Token ──────────────────────────────────────────────────────────────
+
+export const registerPushToken = async (token) => {
+  return apiRequest('/push-token', { method: 'POST', body: { token } });
+};
+
+// ── Roster & Waitlist ───────────────────────────────────────────────────────
+
+export const addToRoster = async (broadcastId, userId, slot) => {
+  return apiRequest(`/broadcasts/${broadcastId}/roster`, {
+    method: 'POST',
+    body: { userId, slot },
+  });
+};
+
+export const removeFromRoster = async (broadcastId, userId) => {
+  return apiRequest(`/broadcasts/${broadcastId}/roster/remove`, {
+    method: 'POST',
+    body: { userId },
+  });
+};
+
+export const confirmAttendance = async (broadcastId) => {
+  return apiRequest(`/broadcasts/${broadcastId}/confirm-attendance`, {
+    method: 'POST',
+  });
+};
+
+export const sendGameReminder = async (broadcastId) => {
+  return apiRequest(`/broadcasts/${broadcastId}/remind`, {
+    method: 'POST',
+  });
+};
+
+export const notifyFreeAgents = async (broadcastId, positionNeeded, message) => {
+  return apiRequest('/notify-free-agents-expo', {
+    method: 'POST',
+    body: { broadcastId, positionNeeded, message },
+  });
+};
+
+// ── Block / Report ──────────────────────────────────────────────────────────
+
+export const blockUser = async (blockedUserId) => {
+  return apiRequest('/block', { method: 'POST', body: { blockedUserId } });
+};
+
+export const unblockUser = async (uid) => {
+  return apiRequest(`/block/${uid}`, { method: 'DELETE' });
+};
+
+export const getBlocks = async () => {
+  return apiRequest('/blocks');
+};
+
+export const reportUser = async (reportedUserId, reason) => {
+  return apiRequest('/report', { method: 'POST', body: { reportedUserId, reason } });
 };

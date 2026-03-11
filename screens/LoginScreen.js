@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
     ActivityIndicator,
@@ -8,15 +10,18 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
+    View,
 } from 'react-native';
-import { login, register, resetPassword } from '../services/api';
+import { login, register, requestResetCode, resetPassword } from '../services/api';
 
 export default function LoginScreen({ onLogin }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
+  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset' | 'resetVerify'
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
     const digits = phone.replace(/\D/g, '');
@@ -46,20 +51,41 @@ export default function LoginScreen({ onLogin }) {
     }
   };
 
+  const handleRequestCode = async () => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10) {
+      return Alert.alert('Invalid Number', 'Please enter your phone number first.');
+    }
+    setLoading(true);
+    try {
+      await requestResetCode(phone);
+      Alert.alert('Code Sent', 'Check your notifications for the verification code.');
+      setMode('resetVerify');
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Could not send code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleReset = async () => {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) {
       return Alert.alert('Invalid Number', 'Please enter your phone number first.');
+    }
+    if (!code || code.length !== 6) {
+      return Alert.alert('Invalid Code', 'Please enter the 6-digit verification code.');
     }
     if (!password || password.length < 6) {
       return Alert.alert('Invalid Password', 'New password must be at least 6 characters.');
     }
     setLoading(true);
     try {
-      await resetPassword(phone, password);
+      await resetPassword(phone, password, code);
       Alert.alert('Success', 'Password updated! You can now sign in.');
       setMode('login');
       setPassword('');
+      setCode('');
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not reset password.');
     } finally {
@@ -72,133 +98,176 @@ export default function LoginScreen({ onLogin }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.logo}>⚾ SubHook</Text>
-      <Text style={styles.tagline}>Softball's free agency platform</Text>
+      <LinearGradient colors={['#111827', '#0a0e1a']} style={styles.gradient}>
+        {/* Logo */}
+        <View style={styles.logoWrap}>
+          <View style={styles.logoIcon}>
+            <Ionicons name="baseball" size={36} color="#3b82f6" />
+          </View>
+          <Text style={styles.logo}>SubHook</Text>
+          <Text style={styles.tagline}>Softball's free agency platform</Text>
+        </View>
 
-      {mode === 'register' && (
-        <>
-          <Text style={styles.label}>Your Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="John Smith"
-            placeholderTextColor="#475569"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-        </>
-      )}
+        {/* Form */}
+        {mode === 'register' && (
+          <>
+            <Text style={styles.label}>Your Name</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="person-outline" size={18} color="#475569" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="John Smith"
+                placeholderTextColor="#475569"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
+          </>
+        )}
 
-      <Text style={styles.label}>Phone Number</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="(555) 000-0000"
-        placeholderTextColor="#475569"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
+        <Text style={styles.label}>{mode === 'reset' ? 'Phone Number' : mode === 'resetVerify' ? '' : 'Phone Number'}</Text>
+        {mode !== 'resetVerify' && (
+          <>
+            <View style={styles.inputWrap}>
+              <Ionicons name="call-outline" size={18} color="#475569" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="(555) 000-0000"
+                placeholderTextColor="#475569"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </>
+        )}
 
-      <Text style={styles.label}>{mode === 'reset' ? 'New Password' : 'Password'}</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="••••••"
-        placeholderTextColor="#475569"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+        {mode !== 'reset' && mode !== 'resetVerify' && (
+          <>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#475569" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="••••••"
+                placeholderTextColor="#475569"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
-      {mode === 'reset' ? (
-        <TouchableOpacity style={styles.btn} onPress={handleReset} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Reset Password</Text>}
+        {mode === 'reset' ? (
+          <TouchableOpacity onPress={handleRequestCode} disabled={loading} activeOpacity={0.8}>
+            <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>Send Verification Code</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : mode === 'resetVerify' ? (
+          <>
+            <Text style={styles.label}>Verification Code</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="keypad-outline" size={18} color="#475569" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="6-digit code"
+                placeholderTextColor="#475569"
+                value={code}
+                onChangeText={setCode}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+            </View>
+
+            <Text style={styles.label}>New Password</Text>
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#475569" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="••••••"
+                placeholderTextColor="#475569"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity onPress={handleReset} disabled={loading} activeOpacity={0.8}>
+              <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
+                {loading
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={styles.btnText}>Reset Password</Text>}
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
+            <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.btnText}>{mode === 'login' ? 'Sign In' : 'Create Account'}</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {mode === 'login' && (
+          <TouchableOpacity onPress={() => { setMode('reset'); setPassword(''); }}>
+            <Text style={styles.link}>Forgot Password?</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity onPress={() => { setMode(mode === 'register' ? 'login' : mode === 'reset' || mode === 'resetVerify' ? 'login' : 'register'); setPassword(''); setName(''); setCode(''); }}>
+          <Text style={styles.back}>
+            {mode === 'login' ? "Don't have an account? Sign Up" : 'Back to Sign In'}
+          </Text>
         </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.btn} onPress={handleSubmit} disabled={loading}>
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>{mode === 'login' ? 'Sign In' : 'Create Account'}</Text>}
-        </TouchableOpacity>
-      )}
-
-      {mode === 'login' && (
-        <TouchableOpacity onPress={() => { setMode('reset'); setPassword(''); }}>
-          <Text style={styles.link}>Forgot Password?</Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity onPress={() => { setMode(mode === 'register' ? 'login' : mode === 'reset' ? 'login' : 'register'); setPassword(''); setName(''); }}>
-        <Text style={styles.back}>
-          {mode === 'login' ? "Don't have an account? Sign Up" : 'Back to Sign In'}
-        </Text>
-      </TouchableOpacity>
+      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f1a2e',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
+  container: { flex: 1 },
+  gradient: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },
+  logoWrap: { alignItems: 'center', marginBottom: 48 },
+  logoIcon: {
+    width: 72, height: 72, borderRadius: 22, backgroundColor: '#3b82f615',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+    shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12,
   },
-  logo: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  tagline: {
-    fontSize: 14,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 48,
-  },
+  logo: { fontSize: 36, fontWeight: '800', color: '#fff' },
+  tagline: { fontSize: 14, color: '#64748b', marginTop: 6 },
   label: {
-    fontSize: 13,
-    color: '#94a3b8',
-    marginBottom: 8,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13, color: '#94a3b8', marginBottom: 8, fontWeight: '600',
+    textTransform: 'uppercase', letterSpacing: 0.5,
   },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#111827', borderRadius: 12,
+    borderWidth: 1, borderColor: '#1e293b', marginBottom: 16,
+  },
+  inputIcon: { marginLeft: 14 },
   input: {
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 17,
-    color: '#fff',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
+    flex: 1, paddingHorizontal: 12, paddingVertical: 14,
+    fontSize: 17, color: '#fff',
   },
+  eyeBtn: { padding: 14 },
   btn: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
+    borderRadius: 14, paddingVertical: 16,
+    alignItems: 'center', marginTop: 4,
   },
-  btnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  back: {
-    color: '#64748b',
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 14,
-  },
-  link: {
-    color: '#2563eb',
-    textAlign: 'center',
-    marginTop: 16,
-    fontSize: 14,
-  },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  back: { color: '#64748b', textAlign: 'center', marginTop: 20, fontSize: 14 },
+  link: { color: '#3b82f6', textAlign: 'center', marginTop: 16, fontSize: 14 },
 });

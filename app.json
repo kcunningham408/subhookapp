@@ -14,9 +14,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecmd.subhook",
-      "buildNumber": "14",
+      "buildNumber": "16",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "SubHook uses your location to show fields on the map and provide directions."
       }
     },
     "android": {
@@ -32,6 +33,9 @@
         "projectId": "fb7c3352-19e5-4b31-b414-00e56cdcc429"
       }
     },
-    "owner": "kcunningham408"
+    "owner": "kcunningham408",
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }
