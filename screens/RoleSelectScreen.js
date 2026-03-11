@@ -17,9 +17,8 @@ export default function RoleSelectScreen({ navigation, route }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await updateUser({ role });
-      const updated = { ...user, role };
-      setUser(updated);
-      navigation.replace('Onboarding', { user: updated, setUser });
+      setUser({ ...user, role });
+      navigation.navigate('Onboarding');
     } catch (e) {
       console.warn('Role update failed', e);
     }

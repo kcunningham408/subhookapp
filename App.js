@@ -22,7 +22,6 @@ import RoleSelectScreen from './screens/RoleSelectScreen';
 import SearchScreen from './screens/SearchScreen';
 
 import { getStoredUser, getConversations, registerPushToken } from './services/api';
-import { CommonActions } from '@react-navigation/native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -194,11 +193,11 @@ export default function App() {
             </Stack.Screen>
           ) : needsOnboarding ? (
             <>
-              <Stack.Screen name="RoleSelect" initialParams={{ user, setUser }}>
+              <Stack.Screen name="RoleSelect">
                 {(props) => <RoleSelectScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
               </Stack.Screen>
               <Stack.Screen name="Onboarding">
-                {(props) => <OnboardingScreen {...props} />}
+                {(props) => <OnboardingScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
               </Stack.Screen>
             </>
           ) : (
