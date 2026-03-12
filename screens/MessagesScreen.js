@@ -1,13 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text,
+    Animated, FlatList, LayoutAnimation, RefreshControl, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
 import { getConversations } from '../services/api';
+
+const SPRING_CONFIG = {
+  duration: 400,
+  create: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+  update: { type: 'spring', springDamping: 0.7 },
+  delete: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+};
 
 export default function MessagesScreen({ navigation, route }) {
   const { user } = route.params;
@@ -16,10 +24,25 @@ export default function MessagesScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
+
   const load = useCallback(async () => {
     try {
       setError(null);
       const res = await getConversations();
+      LayoutAnimation.configureNext(SPRING_CONFIG);
       setConversations(res.conversations || []);
     } catch (e) {
       setError('Could not load messages. Pull to refresh or tap Retry.');
@@ -56,7 +79,7 @@ export default function MessagesScreen({ navigation, route }) {
   const renderConvo = ({ item }) => (
     <TouchableOpacity
       style={s.card}
-      onPress={() => navigation.navigate('Chat', { conversation: item, user })}
+      onPress={() => { Haptics.selectionAsync(); navigation.navigate('Chat', { conversation: item, user }); }}
       activeOpacity={0.7}
     >
       <View style={s.row}>
@@ -83,7 +106,25 @@ export default function MessagesScreen({ navigation, route }) {
   );
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <View style={s.container}>
+        <LinearGradient colors={['#1e293b', '#0a0e1a']} style={s.header}>
+          <Ionicons name="chatbubbles" size={24} color="#3b82f6" />
+          <Text style={s.title}>Messages</Text>
+        </LinearGradient>
+        <View style={{ paddingTop: 8 }}>
+          {[1, 2, 3, 4, 5].map(i => (
+            <View key={i} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 14 }]}>
+              <SkeletonBlock width={48} height={48} style={{ borderRadius: 24 }} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <SkeletonBlock width={120} height={16} />
+                <SkeletonBlock width={180} height={12} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (

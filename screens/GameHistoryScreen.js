@@ -1,12 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text,
-  TouchableOpacity, View,
+    Animated, FlatList, LayoutAnimation, RefreshControl, StyleSheet, Text,
+    TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
 import { getGameHistory } from '../services/api';
+
+const SPRING_CONFIG = {
+  duration: 400,
+  create: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+  update: { type: 'spring', springDamping: 0.7 },
+  delete: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+};
 
 export default function GameHistoryScreen({ navigation, route }) {
   const { user } = route.params;
@@ -16,10 +24,25 @@ export default function GameHistoryScreen({ navigation, route }) {
   const [tab, setTab] = useState('all'); // 'all' | 'created' | 'joined'
   const [error, setError] = useState(null);
 
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
+
   const load = async () => {
     try {
       setError(null);
       const res = await getGameHistory();
+      LayoutAnimation.configureNext(SPRING_CONFIG);
       setData(res);
     } catch (e) {
       setError('Could not load game history. Tap Retry.');
@@ -38,7 +61,35 @@ export default function GameHistoryScreen({ navigation, route }) {
   const stats = data.stats || {};
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <View style={s.container}>
+        <LinearGradient colors={['#0f172a', '#0a0e1a']} style={s.header}>
+          <View style={s.backBtn} />
+          <SkeletonBlock width={160} height={26} />
+          <SkeletonBlock width={100} height={14} style={{ marginTop: 6 }} />
+        </LinearGradient>
+        <View style={s.statsRow}>
+          {[1, 2, 3, 4].map(i => (
+            <View key={i} style={[s.statCard, { alignItems: 'center', gap: 6 }]}>
+              <SkeletonBlock width={36} height={22} />
+              <SkeletonBlock width={30} height={10} />
+            </View>
+          ))}
+        </View>
+        <View style={{ paddingHorizontal: 16, gap: 10, marginTop: 16 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[s.card, { gap: 8 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <SkeletonBlock width={90} height={20} style={{ borderRadius: 8 }} />
+                <SkeletonBlock width={60} height={20} style={{ borderRadius: 8 }} />
+              </View>
+              <SkeletonBlock width={140} height={14} />
+              <SkeletonBlock width={200} height={14} />
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -79,7 +130,7 @@ export default function GameHistoryScreen({ navigation, route }) {
       <View style={s.tabs}>
         {[{ key: 'all', label: 'All' }, { key: 'created', label: 'Created' }, { key: 'joined', label: 'Joined' }].map(t => (
           <TouchableOpacity key={t.key} style={[s.tab, tab === t.key && s.tabActive]}
-            onPress={() => setTab(t.key)}>
+            onPress={() => { Haptics.selectionAsync(); LayoutAnimation.configureNext(SPRING_CONFIG); setTab(t.key); }}>
             <Text style={[s.tabText, tab === t.key && s.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
@@ -99,7 +150,7 @@ export default function GameHistoryScreen({ navigation, route }) {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={s.card}
-            onPress={() => navigation.navigate('BroadcastDetail', { broadcast: item, user })}
+            onPress={() => { Haptics.selectionAsync(); navigation.navigate('BroadcastDetail', { broadcast: item, user }); }}
             activeOpacity={0.7}
           >
             <View style={s.cardTop}>
@@ -139,6 +190,7 @@ export default function GameHistoryScreen({ navigation, route }) {
                   style={s.rateBtn}
                   onPress={(e) => {
                     e.stopPropagation?.();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     navigation.navigate('RatePlayer', {
                       targetUid: item.creatorId,
                       targetName: item.creatorName || 'Organizer',

@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, FlatList, Image, Modal, RefreshControl, StyleSheet, Text,
+    Alert,
+    Animated, FlatList,
+    Image, LayoutAnimation, Modal, RefreshControl, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
-import { POSITIONS as POS_LIST, LEGACY_MAP, normalizePosition } from '../components/FieldPositionPicker';
+import { normalizePosition, POSITIONS as POS_LIST } from '../components/FieldPositionPicker';
 import { getOrCreateConversation, searchPlayers } from '../services/api';
 
 const POSITIONS = ['All', ...POS_LIST.map(p => p.key)];
@@ -18,6 +21,13 @@ const SKILL_COLORS = {
   'Intermediate': '#3b82f6',
   'Competitive': '#8b5cf6',
   'Elite': '#f59e0b',
+};
+
+const SPRING_CONFIG = {
+  duration: 400,
+  create: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+  update: { type: 'spring', springDamping: 0.7 },
+  delete: { type: 'spring', property: 'opacity', springDamping: 0.7 },
 };
 
 export default function SearchScreen({ navigation, route }) {
@@ -31,6 +41,35 @@ export default function SearchScreen({ navigation, route }) {
   const [searchText, setSearchText] = useState('');
   const [distances, setDistances] = useState({});
   const zipCoordsCache = useRef({});
+
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
+  const SkeletonCard = () => (
+    <View style={[s.card, { gap: 12 }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <SkeletonBlock width={48} height={48} style={{ borderRadius: 24 }} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <SkeletonBlock width={120} height={16} />
+          <SkeletonBlock width={80} height={12} />
+        </View>
+        <SkeletonBlock width={40} height={40} style={{ borderRadius: 20 }} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {[1, 2, 3].map(i => <SkeletonBlock key={i} width={60} height={24} style={{ borderRadius: 6 }} />)}
+      </View>
+    </View>
+  );
 
   const haversine = (lat1, lon1, lat2, lon2) => {
     const R = 3958.8;
@@ -79,6 +118,7 @@ export default function SearchScreen({ navigation, route }) {
       const pos = filter === 'All' ? null : filter;
       const res = await searchPlayers(pos, activeOnly);
       const list = res.players || [];
+      LayoutAnimation.configureNext(SPRING_CONFIG);
       setPlayers(list);
       computeDistances(list);
     } catch (e) {
@@ -112,7 +152,7 @@ export default function SearchScreen({ navigation, route }) {
     return (
       <TouchableOpacity
         style={s.card}
-        onPress={() => navigation.navigate('PlayerProfile', { profileUid: item.uid, user })}
+        onPress={() => { Haptics.selectionAsync(); navigation.navigate('PlayerProfile', { profileUid: item.uid, user }); }}
         activeOpacity={0.7}
       >
         <View style={s.cardTop}>
@@ -148,7 +188,7 @@ export default function SearchScreen({ navigation, route }) {
               )}
             </View>
           </View>
-          <TouchableOpacity style={s.msgBtn} onPress={() => handleMessage(item.uid)}>
+          <TouchableOpacity style={s.msgBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleMessage(item.uid); }}>
             <Ionicons name="chatbubble" size={18} color="#3b82f6" />
           </TouchableOpacity>
         </View>
@@ -214,7 +254,7 @@ export default function SearchScreen({ navigation, route }) {
       <View style={s.filterBar}>
         <TouchableOpacity
           style={s.filterSelector}
-          onPress={() => setShowPicker(true)}
+          onPress={() => { setShowPicker(true); Haptics.selectionAsync(); }}
           activeOpacity={0.7}
         >
           <Ionicons name="baseball-outline" size={16} color="#3b82f6" />
@@ -224,7 +264,7 @@ export default function SearchScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={[s.activeFilter, activeOnly && s.activeFilterOn]}
-          onPress={() => setActiveOnly(!activeOnly)}
+          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveOnly(!activeOnly); }}
           activeOpacity={0.7}
         >
           <View style={[s.activeFilterDot, activeOnly && s.activeFilterDotOn]} />
@@ -243,7 +283,7 @@ export default function SearchScreen({ navigation, route }) {
                 <TouchableOpacity
                   key={p}
                   style={[s.modalChip, filter === p && s.modalChipActive]}
-                  onPress={() => { setFilter(p); setShowPicker(false); }}
+                  onPress={() => { Haptics.selectionAsync(); setFilter(p); setShowPicker(false); }}
                 >
                   <Text style={[s.modalChipText, filter === p && s.modalChipTextActive]}>{p}</Text>
                 </TouchableOpacity>
@@ -256,7 +296,9 @@ export default function SearchScreen({ navigation, route }) {
       <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       {loading ? (
-        <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 40 }} />
+        <View style={{ paddingTop: 8 }}>
+          {[1, 2, 3, 4, 5].map(i => <SkeletonCard key={i} />)}
+        </View>
       ) : (
         <FlatList
           data={filteredPlayers}

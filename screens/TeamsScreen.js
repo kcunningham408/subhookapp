@@ -2,10 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text,
-  TextInput, TouchableOpacity, View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    FlatList, Modal, RefreshControl, StyleSheet, Text,
+    TextInput, TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
 import { createTeam, deleteTeam, getMyTeams, inviteToTeam, leaveTeam, searchPlayers } from '../services/api';
@@ -25,6 +28,20 @@ export default function TeamsScreen({ navigation, route }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
+
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
 
   const load = useCallback(async () => {
     try {
@@ -115,7 +132,31 @@ export default function TeamsScreen({ navigation, route }) {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <View style={s.container}>
+        <LinearGradient colors={['#0f172a', '#0a0e1a']} style={s.header}>
+          <View style={s.backBtn} />
+          <View style={s.headerRow}>
+            <Text style={s.title}>My Teams</Text>
+          </View>
+        </LinearGradient>
+        <View style={{ paddingHorizontal: 16, gap: 12 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[s.card, { gap: 10 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <SkeletonBlock width={18} height={18} style={{ borderRadius: 9 }} />
+                <SkeletonBlock width={140} height={18} />
+              </View>
+              <SkeletonBlock width={200} height={13} />
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                <SkeletonBlock width={80} height={32} style={{ borderRadius: 8 }} />
+                <SkeletonBlock width={80} height={32} style={{ borderRadius: 8 }} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -126,7 +167,7 @@ export default function TeamsScreen({ navigation, route }) {
         </TouchableOpacity>
         <View style={s.headerRow}>
           <Text style={s.title}>My Teams</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowCreate(true)}>
+          <TouchableOpacity style={s.addBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowCreate(true); }}>
             <Ionicons name="add" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -183,7 +224,7 @@ export default function TeamsScreen({ navigation, route }) {
               <View style={s.cardActions}>
                 {isOwner ? (
                   <>
-                    <TouchableOpacity style={s.actionBtn} onPress={() => { setManageTeam(item); setInviteSearch(''); setSearchResults([]); }}>
+                    <TouchableOpacity style={s.actionBtn} onPress={() => { Haptics.selectionAsync(); setManageTeam(item); setInviteSearch(''); setSearchResults([]); }}>
                       <Ionicons name="settings-outline" size={16} color="#3b82f6" />
                       <Text style={s.actionText}>Manage</Text>
                     </TouchableOpacity>

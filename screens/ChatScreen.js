@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActionSheetIOS, Alert, AppState, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text,
+    ActionSheetIOS,
+    Alert,
+    Animated,
+    AppState, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
@@ -16,6 +19,15 @@ export default function ChatScreen({ navigation, route }) {
   const flatListRef = useRef(null);
   const pollRef = useRef(null);
   const [error, setError] = useState(null);
+
+  // Send button spring animation
+  const sendScale = useRef(new Animated.Value(1)).current;
+  const animateSend = () => {
+    Animated.sequence([
+      Animated.timing(sendScale, { toValue: 0.8, duration: 60, useNativeDriver: true }),
+      Animated.spring(sendScale, { toValue: 1, friction: 3, useNativeDriver: true }),
+    ]).start();
+  };
 
   const convoId = conversation?.id;
   const otherId = conversation?.participants?.find((p) => p !== user?.uid);
@@ -202,13 +214,15 @@ export default function ChatScreen({ navigation, route }) {
           onChangeText={setText}
           multiline
         />
+        <Animated.View style={{ transform: [{ scale: sendScale }] }}>
         <TouchableOpacity
           style={[s.sendBtn, text.trim() && s.sendBtnActive]}
-          onPress={() => send()}
+          onPress={() => { animateSend(); send(); }}
           disabled={sending || !text.trim()}
         >
           <Ionicons name="send" size={20} color={text.trim() ? '#fff' : '#475569'} />
         </TouchableOpacity>
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );

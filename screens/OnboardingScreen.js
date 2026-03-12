@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Dimensions, FlatList, KeyboardAvoidingView, Platform,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions, FlatList, KeyboardAvoidingView, Platform,
     StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import FieldPositionPicker from '../components/FieldPositionPicker';
 import { saveProfile, updateUser } from '../services/api';
-import FieldPositionPicker, { POSITION_KEYS } from '../components/FieldPositionPicker';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
@@ -32,6 +35,13 @@ export default function OnboardingScreen({ navigation, route }) {
   const [travelRadius, setTravelRadius] = useState('');
   const [homeZip, setHomeZip] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Page icon bounce animation
+  const iconScale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    iconScale.setValue(0.5);
+    Animated.spring(iconScale, { toValue: 1, friction: 4, tension: 60, useNativeDriver: true }).start();
+  }, [page]);
 
   const toggleItem = (item, list, setter) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -80,9 +90,9 @@ export default function OnboardingScreen({ navigation, route }) {
       <View style={[s.page, { width: SCREEN_W }]}>
         {/* Page Header */}
         <View style={s.pageHeader}>
-          <View style={[s.pageIcon, { backgroundColor: pg.color + '20' }]}>
+          <Animated.View style={[s.pageIcon, { backgroundColor: pg.color + '20', transform: [{ scale: iconScale }] }]}>
             <Ionicons name={pg.icon} size={36} color={pg.color} />
-          </View>
+          </Animated.View>
           <Text style={s.pageTitle}>{pg.title}</Text>
           <Text style={s.pageSub}>{pg.sub}</Text>
         </View>

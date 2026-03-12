@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     ActionSheetIOS,
-    ActivityIndicator,
-    Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+    Alert,
+    Animated,
+    Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, invitePlayer, reportUser } from '../services/api';
 import { normalizePosition } from '../components/FieldPositionPicker';
+import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, invitePlayer, reportUser } from '../services/api';
 
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -18,6 +20,20 @@ export default function PlayerProfileScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [ratings, setRatings] = useState(null);
   const [stats, setStats] = useState(null);
+
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
 
   useEffect(() => {
     (async () => {
@@ -39,6 +55,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
   }, [profileUid]);
 
   const handleMessage = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const res = await getOrCreateConversation(profileUid);
       navigation.navigate('Chat', { conversation: res.conversation, user });
@@ -48,6 +65,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
   };
 
   const handleBlockReport = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const options = ['Block User', 'Report User', 'Cancel'];
     const cancelButtonIndex = 2;
     const destructiveButtonIndex = 0;
@@ -98,7 +116,31 @@ export default function PlayerProfileScreen({ navigation, route }) {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <ScrollView style={s.container}>
+        <LinearGradient colors={['#1e293b', '#0a0e1a']} style={s.headerArea}>
+          <SkeletonBlock width={88} height={88} style={{ borderRadius: 44, marginBottom: 14 }} />
+          <SkeletonBlock width={160} height={24} style={{ marginBottom: 8 }} />
+          <SkeletonBlock width={100} height={16} />
+        </LinearGradient>
+        <View style={s.statsRow}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[s.statCard, { alignItems: 'center', gap: 8 }]}>
+              <SkeletonBlock width={24} height={24} style={{ borderRadius: 12 }} />
+              <SkeletonBlock width={50} height={16} />
+              <SkeletonBlock width={36} height={10} />
+            </View>
+          ))}
+        </View>
+        <View style={{ paddingHorizontal: 20, marginTop: 20, gap: 12 }}>
+          <SkeletonBlock width={120} height={14} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {[1, 2, 3].map(i => <SkeletonBlock key={i} width={80} height={32} style={{ borderRadius: 10 }} />)}
+          </View>
+          <SkeletonBlock width={'100%'} height={56} style={{ borderRadius: 14, marginTop: 20 }} />
+        </View>
+      </ScrollView>
+    );
   }
 
   if (!profile) {

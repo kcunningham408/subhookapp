@@ -4,13 +4,16 @@ import * as Haptics from 'expo-haptics';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Image, ScrollView, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { deleteAccount, getStoredUser, logout, saveProfile, setActiveNow } from '../services/api';
 import FieldPositionPicker, { normalizePositions } from '../components/FieldPositionPicker';
+import { deleteAccount, getStoredUser, logout, saveProfile, setActiveNow } from '../services/api';
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -28,6 +31,20 @@ export default function ProfileScreen({ navigation, route }) {
   const [photoBase64, setPhotoBase64] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -146,7 +163,29 @@ export default function ProfileScreen({ navigation, route }) {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <ScrollView style={s.container} contentContainerStyle={s.scroll}>
+        <LinearGradient colors={['#1e293b', '#111827']} style={s.headerCard}>
+          <SkeletonBlock width={80} height={80} style={{ borderRadius: 40, marginBottom: 14 }} />
+          <SkeletonBlock width={140} height={22} style={{ marginBottom: 6 }} />
+          <SkeletonBlock width={100} height={14} />
+        </LinearGradient>
+        <View style={{ marginHorizontal: 16, gap: 10 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[s.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+              <SkeletonBlock width={36} height={36} style={{ borderRadius: 10 }} />
+              <SkeletonBlock width={120} height={16} />
+            </View>
+          ))}
+        </View>
+        <View style={{ paddingHorizontal: 20, marginTop: 24, gap: 12 }}>
+          <SkeletonBlock width={90} height={13} />
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {[1, 2, 3, 4].map(i => <SkeletonBlock key={i} width={100} height={36} style={{ borderRadius: 20 }} />)}
+          </View>
+        </View>
+      </ScrollView>
+    );
   }
 
   return (
@@ -172,21 +211,21 @@ export default function ProfileScreen({ navigation, route }) {
 
       {/* Quick Links */}
       <View style={s.quickLinks}>
-        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('Settings', { user })} activeOpacity={0.7}>
+        <TouchableOpacity style={s.quickLink} onPress={() => { Haptics.selectionAsync(); navigation.navigate('Settings', { user }); }} activeOpacity={0.7}>
           <View style={[s.quickLinkIcon, { backgroundColor: '#3b82f620' }]}>
             <Ionicons name="settings" size={20} color="#3b82f6" />
           </View>
           <Text style={s.quickLinkText}>Settings</Text>
           <Ionicons name="chevron-forward" size={16} color="#334155" />
         </TouchableOpacity>
-        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('GameHistory', { user })} activeOpacity={0.7}>
+        <TouchableOpacity style={s.quickLink} onPress={() => { Haptics.selectionAsync(); navigation.navigate('GameHistory', { user }); }} activeOpacity={0.7}>
           <View style={[s.quickLinkIcon, { backgroundColor: '#8b5cf620' }]}>
             <Ionicons name="trophy" size={20} color="#8b5cf6" />
           </View>
           <Text style={s.quickLinkText}>Game History</Text>
           <Ionicons name="chevron-forward" size={16} color="#334155" />
         </TouchableOpacity>
-        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('Teams', { user })} activeOpacity={0.7}>
+        <TouchableOpacity style={s.quickLink} onPress={() => { Haptics.selectionAsync(); navigation.navigate('Teams', { user }); }} activeOpacity={0.7}>
           <View style={[s.quickLinkIcon, { backgroundColor: '#f59e0b20' }]}>
             <Ionicons name="shield" size={20} color="#f59e0b" />
           </View>

@@ -1,15 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Calendar from 'expo-calendar';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, Platform, RefreshControl, SectionList, StyleSheet, Text,
+    Alert,
+    Animated,
+    LayoutAnimation, Platform, RefreshControl, SectionList, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
 import { normalizePosition, normalizePositions } from '../components/FieldPositionPicker';
 import { getMyGames } from '../services/api';
+
+const SPRING_CONFIG = {
+  duration: 400,
+  create: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+  update: { type: 'spring', springDamping: 0.7 },
+  delete: { type: 'spring', property: 'opacity', springDamping: 0.7 },
+};
 
 const addToCalendar = async (game) => {
   const { status } = await Calendar.requestCalendarPermissionsAsync();
@@ -87,10 +97,25 @@ export default function CalendarScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
+
   const load = useCallback(async () => {
     try {
       setError(null);
       const res = await getMyGames();
+      LayoutAnimation.configureNext(SPRING_CONFIG);
       setCreated(res.created || []);
       setAccepted(res.accepted || []);
     } catch (e) {
@@ -131,7 +156,7 @@ export default function CalendarScreen({ navigation, route }) {
       <TouchableOpacity
         key={item.id}
         style={s.card}
-        onPress={() => navigation.navigate('BroadcastDetail', { broadcast: item, user })}
+        onPress={() => { Haptics.selectionAsync(); navigation.navigate('BroadcastDetail', { broadcast: item, user }); }}
         activeOpacity={0.7}
       >
         <View style={s.cardHeader}>
@@ -178,7 +203,7 @@ export default function CalendarScreen({ navigation, route }) {
           </View>
           <TouchableOpacity
             style={s.calBtn}
-            onPress={(e) => { e.stopPropagation(); addToCalendar(item); }}
+            onPress={(e) => { e.stopPropagation(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); addToCalendar(item); }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="calendar-outline" size={15} color="#3b82f6" />
@@ -191,7 +216,29 @@ export default function CalendarScreen({ navigation, route }) {
   };
 
   if (loading) {
-    return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
+    return (
+      <View style={s.container}>
+        <LinearGradient colors={['#1e293b', '#0a0e1a']} style={s.header}>
+          <Ionicons name="calendar" size={24} color="#3b82f6" />
+          <Text style={s.title}>Your Games</Text>
+        </LinearGradient>
+        <View style={{ paddingTop: 8 }}>
+          {[1, 2, 3].map(i => (
+            <View key={i} style={[s.card, { gap: 10 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <SkeletonBlock width={140} height={20} />
+                <SkeletonBlock width={70} height={20} style={{ borderRadius: 8 }} />
+              </View>
+              <SkeletonBlock width={180} height={14} />
+              <SkeletonBlock width={220} height={14} />
+              <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+                {[1, 2].map(j => <SkeletonBlock key={j} width={60} height={24} style={{ borderRadius: 8 }} />)}
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   return (

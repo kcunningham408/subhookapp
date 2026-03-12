@@ -3,14 +3,16 @@ import * as Calendar from 'expo-calendar';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert,
+    ActivityIndicator,
+    Alert,
+    Animated,
     Linking, Platform, RefreshControl, ScrollView,
     StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
-import MapView, { Marker } from '../components/SafeMapView';
 import { normalizePosition, normalizePositions } from '../components/FieldPositionPicker';
+import MapView, { Marker } from '../components/SafeMapView';
 import {
     addComment, addToRoster, cancelBroadcast, closeBroadcast, confirmAttendance,
     confirmBroadcast, getBroadcast, getComments, getOrCreateConversation, removeFromRoster,
@@ -29,6 +31,20 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+
+  // Skeleton shimmer
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(shimmerAnim, { toValue: 1, duration: 1200, useNativeDriver: true })).start();
+    }
+  }, [loading]);
+  const shimmerTranslate = shimmerAnim.interpolate({ inputRange: [0, 1], outputRange: [-200, 200] });
+  const SkeletonBlock = ({ width, height, style }) => (
+    <View style={[{ width, height, borderRadius: 8, backgroundColor: '#1e293b', overflow: 'hidden' }, style]}>
+      <Animated.View style={{ width: '100%', height: '100%', backgroundColor: '#ffffff08', transform: [{ translateX: shimmerTranslate }] }} />
+    </View>
+  );
 
   // Fetch broadcast if only ID was provided (deep link)
   useEffect(() => {
@@ -83,9 +99,29 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
   if (loading || !broadcast) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#3b82f6" size="large" />
-      </View>
+      <ScrollView style={{ flex: 1, backgroundColor: '#0a0e1a' }}>
+        <LinearGradient colors={['#1e293b', '#0a0e1a']} style={{ paddingTop: 60, paddingBottom: 24, paddingHorizontal: 20, gap: 12 }}>
+          <SkeletonBlock width={80} height={28} style={{ borderRadius: 8 }} />
+          <SkeletonBlock width={200} height={28} />
+          <SkeletonBlock width={140} height={16} />
+        </LinearGradient>
+        <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {[1, 2, 3].map(i => (
+              <View key={i} style={{ flex: 1, backgroundColor: '#111827', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#1e293b', gap: 8 }}>
+                <SkeletonBlock width={24} height={24} style={{ borderRadius: 12 }} />
+                <SkeletonBlock width={50} height={14} />
+                <SkeletonBlock width={36} height={10} />
+              </View>
+            ))}
+          </View>
+          <View style={{ backgroundColor: '#111827', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#1e293b', gap: 10 }}>
+            <SkeletonBlock width={120} height={14} />
+            <SkeletonBlock width={'100%'} height={120} style={{ borderRadius: 12 }} />
+          </View>
+          <SkeletonBlock width={'100%'} height={56} style={{ borderRadius: 14 }} />
+        </View>
+      </ScrollView>
     );
   }
 

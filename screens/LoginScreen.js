@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
+    Animated,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
@@ -23,6 +24,37 @@ export default function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Logo pulse animation
+  const logoScale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(logoScale, { toValue: 1.06, duration: 2000, useNativeDriver: true }),
+        Animated.timing(logoScale, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  // Button press animation
+  const btnScale = useRef(new Animated.Value(1)).current;
+  const animateBtn = () => {
+    Animated.sequence([
+      Animated.timing(btnScale, { toValue: 0.96, duration: 80, useNativeDriver: true }),
+      Animated.spring(btnScale, { toValue: 1, friction: 3, useNativeDriver: true }),
+    ]).start();
+  };
+
+  // Spinner animation
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (loading) {
+      Animated.loop(Animated.timing(spinAnim, { toValue: 1, duration: 800, useNativeDriver: true })).start();
+    } else {
+      spinAnim.setValue(0);
+    }
+  }, [loading]);
+  const spinRotate = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
   const handleSubmit = async () => {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) {
@@ -36,6 +68,8 @@ export default function LoginScreen({ onLogin }) {
     }
 
     setLoading(true);
+    animateBtn();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       let user;
       if (mode === 'register') {
@@ -57,6 +91,8 @@ export default function LoginScreen({ onLogin }) {
       return Alert.alert('Invalid Number', 'Please enter your phone number first.');
     }
     setLoading(true);
+    animateBtn();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await requestResetCode(phone);
       Alert.alert('Code Sent', 'Check your notifications for the verification code.');
@@ -80,6 +116,8 @@ export default function LoginScreen({ onLogin }) {
       return Alert.alert('Invalid Password', 'New password must be at least 6 characters.');
     }
     setLoading(true);
+    animateBtn();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await resetPassword(phone, password, code);
       Alert.alert('Success', 'Password updated! You can now sign in.');
@@ -101,9 +139,9 @@ export default function LoginScreen({ onLogin }) {
       <LinearGradient colors={['#111827', '#0a0e1a']} style={styles.gradient}>
         {/* Logo */}
         <View style={styles.logoWrap}>
-          <View style={styles.logoIcon}>
+          <Animated.View style={[styles.logoIcon, { transform: [{ scale: logoScale }] }]}>
             <Ionicons name="baseball" size={36} color="#3b82f6" />
-          </View>
+          </Animated.View>
           <Text style={styles.logo}>SubHook</Text>
           <Text style={styles.tagline}>Softball's free agency platform</Text>
         </View>
@@ -164,13 +202,15 @@ export default function LoginScreen({ onLogin }) {
         )}
 
         {mode === 'reset' ? (
+          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <TouchableOpacity onPress={handleRequestCode} disabled={loading} activeOpacity={0.8}>
             <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
               {loading
-                ? <ActivityIndicator color="#fff" />
+                ? <Animated.View style={{ transform: [{ rotate: spinRotate }] }}><Ionicons name="reload" size={20} color="#fff" /></Animated.View>
                 : <Text style={styles.btnText}>Send Verification Code</Text>}
             </LinearGradient>
           </TouchableOpacity>
+          </Animated.View>
         ) : mode === 'resetVerify' ? (
           <>
             <Text style={styles.label}>Verification Code</Text>
@@ -203,22 +243,26 @@ export default function LoginScreen({ onLogin }) {
               </TouchableOpacity>
             </View>
 
+            <Animated.View style={{ transform: [{ scale: btnScale }] }}>
             <TouchableOpacity onPress={handleReset} disabled={loading} activeOpacity={0.8}>
               <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
                 {loading
-                  ? <ActivityIndicator color="#fff" />
+                  ? <Animated.View style={{ transform: [{ rotate: spinRotate }] }}><Ionicons name="reload" size={20} color="#fff" /></Animated.View>
                   : <Text style={styles.btnText}>Reset Password</Text>}
               </LinearGradient>
             </TouchableOpacity>
+            </Animated.View>
           </>
         ) : (
+          <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <TouchableOpacity onPress={handleSubmit} disabled={loading} activeOpacity={0.8}>
             <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btn}>
               {loading
-                ? <ActivityIndicator color="#fff" />
+                ? <Animated.View style={{ transform: [{ rotate: spinRotate }] }}><Ionicons name="reload" size={20} color="#fff" /></Animated.View>
                 : <Text style={styles.btnText}>{mode === 'login' ? 'Sign In' : 'Create Account'}</Text>}
             </LinearGradient>
           </TouchableOpacity>
+          </Animated.View>
         )}
 
         {mode === 'login' && (
@@ -227,7 +271,7 @@ export default function LoginScreen({ onLogin }) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity onPress={() => { setMode(mode === 'register' ? 'login' : mode === 'reset' || mode === 'resetVerify' ? 'login' : 'register'); setPassword(''); setName(''); setCode(''); }}>
+        <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setMode(mode === 'register' ? 'login' : mode === 'reset' || mode === 'resetVerify' ? 'login' : 'register'); setPassword(''); setName(''); setCode(''); }}>
           <Text style={styles.back}>
             {mode === 'login' ? "Don't have an account? Sign Up" : 'Back to Sign In'}
           </Text>

@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
-  ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View,
+    ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { submitRating } from '../services/api';
 

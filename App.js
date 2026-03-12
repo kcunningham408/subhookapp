@@ -24,8 +24,8 @@ import PlayerProfileScreen from './screens/PlayerProfileScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import RatePlayerScreen from './screens/RatePlayerScreen';
 // RoleSelectScreen removed — single unified role
-import SearchScreen from './screens/SearchScreen';
 import GameHistoryScreen from './screens/GameHistoryScreen';
+import SearchScreen from './screens/SearchScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import TeamsScreen from './screens/TeamsScreen';
 

@@ -2,14 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
-    ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    KeyboardAvoidingView, Platform,
     ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { createBroadcast } from '../services/api';
 import FieldPositionPicker from '../components/FieldPositionPicker';
 import LocationSearchInput from '../components/LocationSearchInput';
+import { createBroadcast } from '../services/api';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const formatDate = (d) => {
@@ -36,6 +39,15 @@ export default function CreateBroadcastScreen({ navigation, route }) {
   const [locationCoords, setLocationCoords] = useState(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Submit button animation
+  const submitScale = useRef(new Animated.Value(1)).current;
+  const animateSubmit = () => {
+    Animated.sequence([
+      Animated.timing(submitScale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
+      Animated.spring(submitScale, { toValue: 1, friction: 3, useNativeDriver: true }),
+    ]).start();
+  };
 
   const toggle = (p) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -238,7 +250,8 @@ export default function CreateBroadcastScreen({ navigation, route }) {
         />
 
         {/* Submit */}
-        <TouchableOpacity onPress={submit} disabled={saving} activeOpacity={0.8}>
+        <Animated.View style={{ transform: [{ scale: submitScale }] }}>
+        <TouchableOpacity onPress={() => { animateSubmit(); submit(); }} disabled={saving} activeOpacity={0.8}>
           <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.submitBtn}>
             {saving ? (
               <ActivityIndicator color="#fff" />
@@ -250,6 +263,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
             )}
           </LinearGradient>
         </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

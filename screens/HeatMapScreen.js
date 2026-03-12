@@ -4,11 +4,11 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Platform, StyleSheet, Text,
-  TouchableOpacity, View,
+    ActivityIndicator, Alert, Platform, StyleSheet, Text,
+    TouchableOpacity, View,
 } from 'react-native';
-import MapView, { Callout, Circle, Marker } from '../components/SafeMapView';
 import { normalizePositions } from '../components/FieldPositionPicker';
+import MapView, { Callout, Circle, Marker } from '../components/SafeMapView';
 import { getBroadcasts } from '../services/api';
 
 const TYPE_COLORS = {
