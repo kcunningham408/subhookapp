@@ -5,7 +5,7 @@ import {
   ActivityIndicator, FlatList, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker } from './SafeMapView';
 
 export default function LocationSearchInput({
   value,

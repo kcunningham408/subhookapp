@@ -7,7 +7,7 @@ import {
   ActivityIndicator, Alert, Platform, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
-import MapView, { Callout, Circle, Marker } from 'react-native-maps';
+import MapView, { Callout, Circle, Marker } from '../components/SafeMapView';
 import { normalizePositions } from '../components/FieldPositionPicker';
 import { getBroadcasts } from '../services/api';
 

@@ -9,7 +9,7 @@ import {
     Linking, Platform, RefreshControl, ScrollView,
     StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker } from '../components/SafeMapView';
 import { normalizePosition, normalizePositions } from '../components/FieldPositionPicker';
 import {
     addComment, addToRoster, cancelBroadcast, closeBroadcast, confirmAttendance,
