@@ -24,8 +24,8 @@ const formatTime = (d) => {
 
 export default function CreateBroadcastScreen({ navigation, route }) {
   const { user } = route.params;
-  const isManager = user.role === 'manager' || user.role === 'both';
 
+  const [broadcastType, setBroadcastType] = useState('manager'); // 'manager' = sub needed, 'player' = available
   const [dateObj, setDateObj] = useState(null);
   const [timeObj, setTimeObj] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -46,7 +46,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
     setSaving(true);
     try {
       await createBroadcast({
-        type: isManager ? 'manager' : 'player',
+        type: broadcastType,
         date: formatDate(dateObj),
         time: formatTime(timeObj),
         positions,
@@ -75,17 +75,32 @@ export default function CreateBroadcastScreen({ navigation, route }) {
             <Text style={s.backText}>Back</Text>
           </TouchableOpacity>
           <View style={s.headerIcon}>
-            <Ionicons name={isManager ? 'clipboard' : 'megaphone'} size={28} color="#3b82f6" />
+            <Ionicons name="megaphone" size={28} color="#3b82f6" />
           </View>
-          <Text style={s.title}>
-            {isManager ? 'Post Sub Request' : 'Broadcast Availability'}
-          </Text>
-          <Text style={s.sub}>
-            {isManager
-              ? 'Let players know you need a sub'
-              : "Let managers know you're available"}
-          </Text>
+          <Text style={s.title}>Create Broadcast</Text>
+          <Text style={s.sub}>Post a sub request or broadcast your availability</Text>
         </LinearGradient>
+
+        {/* Broadcast Type Toggle */}
+        <Text style={s.label}>
+          <Ionicons name="radio" size={12} color="#94a3b8" />  Broadcast Type *
+        </Text>
+        <View style={s.chips}>
+          <TouchableOpacity
+            style={[s.chip, broadcastType === 'manager' && { backgroundColor: '#3b82f6', borderColor: '#3b82f6' }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBroadcastType('manager'); }}
+          >
+            <Ionicons name="megaphone" size={14} color={broadcastType === 'manager' ? '#fff' : '#94a3b8'} style={{ marginRight: 4 }} />
+            <Text style={[s.chipText, broadcastType === 'manager' && s.chipTextActive]}>Sub Needed</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.chip, broadcastType === 'player' && { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBroadcastType('player'); }}
+          >
+            <Ionicons name="hand-right" size={14} color={broadcastType === 'player' ? '#fff' : '#94a3b8'} style={{ marginRight: 4 }} />
+            <Text style={[s.chipText, broadcastType === 'player' && s.chipTextActive]}>I'm Available</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Date & Time Row */}
         <View style={s.rowFields}>
@@ -158,7 +173,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
 
         {/* Positions */}
         <Text style={s.label}>
-          <Ionicons name="people" size={12} color="#94a3b8" />  Positions {isManager ? 'Needed' : 'You Can Play'}
+          <Ionicons name="people" size={12} color="#94a3b8" />  Positions
         </Text>
         <View style={s.chips}>
           {POSITIONS.map((p) => (

@@ -18,10 +18,10 @@ import MessagesScreen from './screens/MessagesScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import PlayerProfileScreen from './screens/PlayerProfileScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import RoleSelectScreen from './screens/RoleSelectScreen';
+// RoleSelectScreen removed — single unified role
 import SearchScreen from './screens/SearchScreen';
 
-import { getStoredUser, getConversations, registerPushToken } from './services/api';
+import { getConversations, getStoredUser, registerPushToken } from './services/api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -181,8 +181,7 @@ export default function App() {
     );
   }
 
-  const needsRole = user && !user.onboardingComplete && !user.role;
-  const needsOnboarding = user && !user.onboardingComplete && !!user.role;
+  const needsOnboarding = user && !user.onboardingComplete;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -191,10 +190,6 @@ export default function App() {
           {!user ? (
             <Stack.Screen name="Login">
               {(props) => <LoginScreen {...props} onLogin={(data) => setUser(data.user)} />}
-            </Stack.Screen>
-          ) : needsRole ? (
-            <Stack.Screen name="RoleSelect">
-              {(props) => <RoleSelectScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
             </Stack.Screen>
           ) : needsOnboarding ? (
             <Stack.Screen name="Onboarding">

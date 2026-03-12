@@ -17,18 +17,16 @@ export default function DashboardScreen({ navigation, route }) {
   const [refreshing, setRefreshing] = useState(false);
   const [isActive, setIsActive] = useState(user?.activeNow || false);
 
-  const isManager = user?.role === 'manager' || user?.role === 'both';
-  const isPlayer = user?.role === 'player' || user?.role === 'both';
-
   const load = useCallback(async () => {
     try {
       const [myRes, feedRes, activeRes] = await Promise.all([
         getBroadcasts(null, true),
-        getBroadcasts(isPlayer ? 'manager' : 'player'),
+        getBroadcasts(),
         getActiveNow(),
       ]);
       setMyBroadcasts(myRes.broadcasts || []);
-      setFeed(feedRes.broadcasts || []);
+      // Exclude my own from the feed
+      setFeed((feedRes.broadcasts || []).filter(b => b.creatorId !== user?.uid));
       setActiveUsers(activeRes.active || []);
     } catch (e) {
       console.warn('Dashboard load error', e);
@@ -36,7 +34,7 @@ export default function DashboardScreen({ navigation, route }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isPlayer]);
+  }, [user?.uid]);
 
   useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
 
@@ -150,14 +148,8 @@ export default function DashboardScreen({ navigation, route }) {
             <Text style={s.greeting}>Hey {user.name?.split(' ')[0] || 'there'}</Text>
             <View style={s.roleRow}>
               <View style={s.roleBadge}>
-                <Ionicons
-                  name={isManager ? 'shield-checkmark' : 'baseball'}
-                  size={12}
-                  color="#3b82f6"
-                />
-                <Text style={s.roleText}>
-                  {user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}
-                </Text>
+                <Ionicons name="baseball" size={12} color="#3b82f6" />
+                <Text style={s.roleText}>SubHook</Text>
               </View>
             </View>
           </View>
@@ -240,10 +232,8 @@ export default function DashboardScreen({ navigation, route }) {
           end={{ x: 1, y: 0 }}
           style={s.createBtnGradient}
         >
-          <Ionicons name={isManager ? 'megaphone' : 'flash'} size={20} color="#fff" />
-          <Text style={s.createBtnText}>
-            {isManager ? 'Post Sub Request' : 'Broadcast Availability'}
-          </Text>
+          <Ionicons name="megaphone" size={20} color="#fff" />
+          <Text style={s.createBtnText}>Create Broadcast</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
@@ -270,9 +260,7 @@ export default function DashboardScreen({ navigation, route }) {
 
       <View style={s.sectionHeader}>
         <Ionicons name="list-outline" size={16} color="#94a3b8" />
-        <Text style={s.sectionTitle}>
-          {isPlayer ? 'Teams Looking for Subs' : 'Players Available'}
-        </Text>
+        <Text style={s.sectionTitle}>Latest Broadcasts</Text>
       </View>
       {later.length > 0 ? later.map(renderBroadcast) : (
         <View style={s.emptyState}>

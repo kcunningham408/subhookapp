@@ -169,10 +169,7 @@ export default function ProfileScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={s.name}>{user.name}</Text>
         <Text style={s.phone}>{user.phone}</Text>
-        <View style={s.rolePill}>
-          <Ionicons name={user.role === 'player' ? 'baseball' : user.role === 'manager' ? 'clipboard' : 'swap-horizontal'} size={14} color="#3b82f6" />
-          <Text style={s.roleText}>{user.role?.charAt(0).toUpperCase() + user.role?.slice(1)}</Text>
-        </View>
+
       </LinearGradient>
 
       {/* Active Now Toggle */}
@@ -283,11 +280,9 @@ export default function ProfileScreen({ navigation, route }) {
         maxLength={5}
       />
 
-      {(user.role === 'manager' || user.role === 'both') && (
-        <>
-          <Text style={s.section}>
-            <Ionicons name="shield" size={13} color="#94a3b8" />  Team Name
-          </Text>
+      <Text style={s.section}>
+        <Ionicons name="shield" size={13} color="#94a3b8" />  Team Name
+      </Text>
           <TextInput
             style={s.input}
             value={teamName}
@@ -295,18 +290,16 @@ export default function ProfileScreen({ navigation, route }) {
             placeholder="e.g. Bay Area Sluggers"
             placeholderTextColor="#475569"
           />
-          <Text style={s.section}>
-            <Ionicons name="color-palette" size={13} color="#94a3b8" />  Team Color
-          </Text>
-          <TextInput
-            style={s.input}
-            value={teamColor}
-            onChangeText={setTeamColor}
-            placeholder="e.g. Red, Blue, Green"
-            placeholderTextColor="#475569"
-          />
-        </>
-      )}
+      <Text style={s.section}>
+        <Ionicons name="color-palette" size={13} color="#94a3b8" />  Team Color
+      </Text>
+      <TextInput
+        style={s.input}
+        value={teamColor}
+        onChangeText={setTeamColor}
+        placeholder="e.g. Red, Blue, Green"
+        placeholderTextColor="#475569"
+      />
 
       {/* Save */}
       <TouchableOpacity onPress={save} disabled={saving} activeOpacity={0.8}>

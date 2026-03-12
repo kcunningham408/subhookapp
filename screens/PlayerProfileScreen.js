@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator, ActionSheetIOS, Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+    ActionSheetIOS,
+    ActivityIndicator,
+    Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { blockUser, getOrCreateConversation, getProfile, notifyFreeAgents, reportUser } from '../services/api';
 
@@ -216,8 +218,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
             </LinearGradient>
           </TouchableOpacity>
 
-          {(user.role === 'manager' || user.role === 'both') && (
-            <TouchableOpacity
+          <TouchableOpacity
               onPress={() => {
                 Alert.alert(
                   'Invite to Game',
@@ -245,7 +246,6 @@ export default function PlayerProfileScreen({ navigation, route }) {
                 <Text style={s.inviteBtnText}>Invite to Game</Text>
               </View>
             </TouchableOpacity>
-          )}
         </View>
       )}
     </ScrollView>
