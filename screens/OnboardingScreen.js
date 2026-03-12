@@ -42,11 +42,12 @@ export default function OnboardingScreen({ navigation, route }) {
       await saveProfile(profileData);
       await updateUser({ onboardingComplete: true });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // setUser triggers navigation away (unmounts this screen),
+      // so it must be the last thing called — no state updates after.
       setUser({ ...user, onboardingComplete: true });
     } catch (e) {
-      Alert.alert('Error', e.message);
-    } finally {
       setSaving(false);
+      Alert.alert('Error', e.message);
     }
   };
 
