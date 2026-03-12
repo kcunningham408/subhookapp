@@ -41,7 +41,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
       const res = await getOrCreateConversation(profileUid);
       navigation.navigate('Chat', { conversation: res.conversation, user });
     } catch (e) {
-      console.warn('Create convo error', e);
+      Alert.alert('Error', 'Could not start conversation. Please try again.');
     }
   };
 
@@ -141,6 +141,15 @@ export default function PlayerProfileScreen({ navigation, route }) {
           <View style={s.activePill}>
             <View style={s.activeDot} />
             <Text style={s.activeText}>Active Now</Text>
+          </View>
+        )}
+
+        {/* Reputation Score Badge */}
+        {stats?.repScore > 0 && (
+          <View style={[s.repBadge, stats.repScore >= 70 ? s.repBadgeHigh : stats.repScore >= 40 ? s.repBadgeMed : s.repBadgeLow]}>
+            <Ionicons name="shield-checkmark" size={16} color={stats.repScore >= 70 ? '#10b981' : stats.repScore >= 40 ? '#f59e0b' : '#64748b'} />
+            <Text style={[s.repScore, { color: stats.repScore >= 70 ? '#10b981' : stats.repScore >= 40 ? '#f59e0b' : '#64748b' }]}>{stats.repScore}</Text>
+            <Text style={s.repLabel}>REP</Text>
           </View>
         )}
 
@@ -335,6 +344,15 @@ const s = StyleSheet.create({
   },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10b981' },
   activeText: { color: '#10b981', fontSize: 13, fontWeight: '700' },
+  repBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 10, marginTop: 10,
+  },
+  repBadgeHigh: { backgroundColor: '#10b98120' },
+  repBadgeMed: { backgroundColor: '#f59e0b20' },
+  repBadgeLow: { backgroundColor: '#64748b20' },
+  repScore: { fontSize: 20, fontWeight: '900' },
+  repLabel: { fontSize: 11, fontWeight: '700', color: '#64748b', letterSpacing: 1 },
   name: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
   teamRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   teamName: { fontSize: 14, color: '#f59e0b', fontWeight: '600' },

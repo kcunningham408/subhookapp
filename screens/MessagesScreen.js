@@ -6,6 +6,7 @@ import {
     ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { getConversations } from '../services/api';
 
 export default function MessagesScreen({ navigation, route }) {
@@ -13,13 +14,15 @@ export default function MessagesScreen({ navigation, route }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
+      setError(null);
       const res = await getConversations();
       setConversations(res.conversations || []);
     } catch (e) {
-      console.warn('Load convos error', e);
+      setError('Could not load messages. Pull to refresh or tap Retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,6 +99,7 @@ export default function MessagesScreen({ navigation, route }) {
           </View>
         )}
       </LinearGradient>
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
       <FlatList
         data={conversations}
         keyExtractor={(item) => item.id}

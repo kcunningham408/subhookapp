@@ -101,7 +101,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
       setBroadcast(bRes.broadcast);
       setComments(cRes.comments || []);
     } catch (e) {
-      console.warn('Refresh error', e);
+      Alert.alert('Error', 'Could not refresh. Please try again.');
     }
   };
 

@@ -5,6 +5,7 @@ import {
     ActionSheetIOS, Alert, AppState, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { blockUser, getMessages, reportUser, sendMessage } from '../services/api';
 
 export default function ChatScreen({ navigation, route }) {
@@ -18,12 +19,15 @@ export default function ChatScreen({ navigation, route }) {
   const otherId = conversation.participants?.find((p) => p !== user.uid);
   const otherName = conversation.participantNames?.[otherId] || 'Unknown';
 
+  const [error, setError] = useState(null);
+
   const load = useCallback(async () => {
     try {
       const res = await getMessages(conversation.id);
       setMessages(res.messages || []);
+      setError(null);
     } catch (e) {
-      console.warn('Load msgs error', e);
+      if (messages.length === 0) setError('Could not load messages. Tap Retry.');
     }
   }, [conversation.id]);
 
@@ -55,7 +59,7 @@ export default function ChatScreen({ navigation, route }) {
       await sendMessage(conversation.id, trimmed);
       await load();
     } catch (e) {
-      console.warn('Send error', e);
+      Alert.alert('Error', 'Message failed to send. Please try again.');
     } finally {
       setSending(false);
     }
@@ -157,6 +161,8 @@ export default function ChatScreen({ navigation, route }) {
           <Ionicons name="ellipsis-vertical" size={20} color="#94a3b8" />
         </TouchableOpacity>
       </View>
+
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       <FlatList
         ref={flatListRef}

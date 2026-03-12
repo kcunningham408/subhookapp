@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Platform, StyleSheet, Text,
+  ActivityIndicator, Alert, Platform, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import MapView, { Callout, Circle, Marker } from 'react-native-maps';
@@ -74,7 +74,7 @@ export default function HeatMapScreen({ navigation, route }) {
         });
       }
     } catch (e) {
-      console.warn('HeatMap load error', e);
+      Alert.alert('Error', 'Could not load map data. Try again later.');
     } finally {
       setLoading(false);
     }
@@ -214,7 +214,10 @@ export default function HeatMapScreen({ navigation, route }) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           try {
             const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') return;
+            if (status !== 'granted') {
+              Alert.alert('Location Permission', 'Please enable location access in Settings to use this feature.');
+              return;
+            }
             const loc = await Location.getCurrentPositionAsync({});
             mapRef.current?.animateToRegion({
               latitude: loc.coords.latitude,
@@ -222,7 +225,7 @@ export default function HeatMapScreen({ navigation, route }) {
               latitudeDelta: 0.15,
               longitudeDelta: 0.15,
             }, 500);
-          } catch {}
+          } catch { Alert.alert('Error', 'Could not get your location.'); }
         }}
       >
         <Ionicons name="navigate" size={22} color="#3b82f6" />

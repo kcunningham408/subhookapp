@@ -4,9 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
 import {
-    ActivityIndicator, FlatList, Image, Modal, RefreshControl, StyleSheet, Text,
+    ActivityIndicator, Alert, FlatList, Image, Modal, RefreshControl, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { getOrCreateConversation, searchPlayers } from '../services/api';
 
 const POSITIONS = ['All', 'Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
@@ -68,16 +69,19 @@ export default function SearchScreen({ navigation, route }) {
     setDistances(distMap);
   }, [user?.homeZip]);
 
+  const [error, setError] = useState(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      setError(null);
       const pos = filter === 'All' ? null : filter;
       const res = await searchPlayers(pos, activeOnly);
       const list = res.players || [];
       setPlayers(list);
       computeDistances(list);
     } catch (e) {
-      console.warn('Search error', e);
+      setError('Could not load players. Pull to refresh or tap Retry.');
     } finally {
       setLoading(false);
     }
@@ -98,7 +102,7 @@ export default function SearchScreen({ navigation, route }) {
       const res = await getOrCreateConversation(otherUid);
       navigation.navigate('Chat', { conversation: res.conversation, user });
     } catch (e) {
-      console.warn('Create convo error', e);
+      Alert.alert('Error', 'Could not start conversation. Please try again.');
     }
   };
 
@@ -124,6 +128,12 @@ export default function SearchScreen({ navigation, route }) {
           <View style={s.cardInfo}>
             <Text style={s.name}>{item.name || 'Unknown'}</Text>
             <View style={s.metaRow}>
+              {item.repScore > 0 && (
+                <View style={[s.repBadge, item.repScore >= 70 ? s.repBadgeHigh : item.repScore >= 40 ? s.repBadgeMed : s.repBadgeLow]}>
+                  <Ionicons name="shield-checkmark" size={11} color={item.repScore >= 70 ? '#10b981' : item.repScore >= 40 ? '#f59e0b' : '#64748b'} />
+                  <Text style={[s.repText, { color: item.repScore >= 70 ? '#10b981' : item.repScore >= 40 ? '#f59e0b' : '#64748b' }]}>{item.repScore}</Text>
+                </View>
+              )}
               {item.skillLevel ? (
                 <View style={[s.skillBadge, { backgroundColor: skillColor + '20' }]}>
                   <Text style={[s.skillText, { color: skillColor }]}>{item.skillLevel}</Text>
@@ -242,6 +252,8 @@ export default function SearchScreen({ navigation, route }) {
         </TouchableOpacity>
       </Modal>
 
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
+
       {loading ? (
         <ActivityIndicator color="#3b82f6" size="large" style={{ marginTop: 40 }} />
       ) : (
@@ -350,6 +362,14 @@ const s = StyleSheet.create({
   activeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   activeBadgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' },
   activeBadgeText: { fontSize: 11, color: '#10b981', fontWeight: '600' },
+  repBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  repBadgeHigh: { backgroundColor: '#10b98120' },
+  repBadgeMed: { backgroundColor: '#f59e0b20' },
+  repBadgeLow: { backgroundColor: '#64748b20' },
+  repText: { fontSize: 11, fontWeight: '800' },
   msgBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: '#3b82f615',
     alignItems: 'center', justifyContent: 'center',

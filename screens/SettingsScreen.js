@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text,
+  ActivityIndicator, Alert, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -47,6 +47,7 @@ export default function SettingsScreen({ navigation, route }) {
       await updateNotificationPrefs(next);
     } catch (e) {
       setPrefs(prefs); // revert
+      Alert.alert('Error', 'Could not save preference. Try again.');
     }
   };
 

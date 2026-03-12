@@ -6,6 +6,7 @@ import {
     ActivityIndicator, RefreshControl, SectionList, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { getMyGames } from '../services/api';
 
 const STATUS_CONFIG = {
@@ -21,14 +22,16 @@ export default function CalendarScreen({ navigation, route }) {
   const [accepted, setAccepted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
+      setError(null);
       const res = await getMyGames();
       setCreated(res.created || []);
       setAccepted(res.accepted || []);
     } catch (e) {
-      console.warn('Calendar load error', e);
+      setError('Could not load your games. Pull to refresh or tap Retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,6 +132,8 @@ export default function CalendarScreen({ navigation, route }) {
           <Text style={s.countText}>{created.length + accepted.length}</Text>
         </View>
       </LinearGradient>
+
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       <SectionList
         sections={sections}

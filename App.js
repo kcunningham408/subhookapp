@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Device from 'expo-device';
+import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
@@ -39,6 +40,16 @@ Notifications.setNotificationHandler({
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const navigationRef = createNavigationContainerRef();
+
+const linking = {
+  prefixes: [Linking.createURL('/'), 'subhook://'],
+  config: {
+    screens: {
+      BroadcastDetail: 'broadcast/:broadcastId',
+      PlayerProfile: 'player/:uid',
+    },
+  },
+};
 
 const TAB_ICONS = {
   Dashboard: { focused: 'home', unfocused: 'home-outline' },
@@ -146,10 +157,20 @@ export default function App() {
   const [user, setUser] = useState(undefined);
   const notificationListener = useRef();
   const responseListener = useRef();
+  const pendingDeepLink = useRef(null);
 
   useEffect(() => {
     getStoredUser().then((res) => setUser(res?.user ?? null));
   }, []);
+
+  // When user logs in, navigate to any pending deep link
+  useEffect(() => {
+    if (user && pendingDeepLink.current && navigationRef.isReady()) {
+      const { screen, params } = pendingDeepLink.current;
+      pendingDeepLink.current = null;
+      setTimeout(() => navigationRef.navigate(screen, { ...params, user }), 300);
+    }
+  }, [user]);
 
   // Register push token when user is logged in
   useEffect(() => {
@@ -194,7 +215,18 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer
+        ref={navigationRef}
+        linking={linking}
+        onUnhandledAction={(action) => {
+          // Deep link arrived while not logged in — stash it
+          if (action?.payload?.name === 'BroadcastDetail' && action.payload.params?.broadcastId) {
+            pendingDeepLink.current = { screen: 'BroadcastDetail', params: action.payload.params };
+          } else if (action?.payload?.name === 'PlayerProfile' && action.payload.params?.uid) {
+            pendingDeepLink.current = { screen: 'PlayerProfile', params: action.payload.params };
+          }
+        }}
+      >
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <Stack.Screen name="Login">

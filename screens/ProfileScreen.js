@@ -144,7 +144,7 @@ export default function ProfileScreen({ navigation, route }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const next = !isActive;
     setIsActive(next);
-    try { await setActiveNow(next); } catch (e) { setIsActive(!next); }
+    try { await setActiveNow(next); } catch (e) { setIsActive(!next); Alert.alert('Error', 'Could not update active status.'); }
   };
 
   if (loading) {
@@ -233,7 +233,7 @@ export default function ProfileScreen({ navigation, route }) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               const next = !freeAgent;
               setFreeAgent(next);
-              try { await saveProfile({ freeAgentMode: next }); } catch (e) { setFreeAgent(!next); }
+              try { await saveProfile({ freeAgentMode: next }); } catch (e) { setFreeAgent(!next); Alert.alert('Error', 'Could not update free agent status.'); }
             }}
             activeOpacity={0.8}
           >

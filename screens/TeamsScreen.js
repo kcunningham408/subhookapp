@@ -7,6 +7,7 @@ import {
   ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { createTeam, deleteTeam, getMyTeams, inviteToTeam, leaveTeam, searchPlayers } from '../services/api';
 
 export default function TeamsScreen({ navigation, route }) {
@@ -23,13 +24,15 @@ export default function TeamsScreen({ navigation, route }) {
   const [inviteSearch, setInviteSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
+      setError(null);
       const res = await getMyTeams();
       setTeams(res.teams || []);
     } catch (e) {
-      console.warn('Teams load error', e);
+      setError('Could not load teams. Pull to refresh or tap Retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -92,7 +95,7 @@ export default function TeamsScreen({ navigation, route }) {
         !(manageTeam?.members || []).includes(p.uid)
       );
       setSearchResults(results.slice(0, 10));
-    } catch { setSearchResults([]); }
+    } catch { setSearchResults([]); Alert.alert('Error', 'Search failed. Try again.'); }
     finally { setSearching(false); }
   };
 
@@ -128,6 +131,8 @@ export default function TeamsScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       <FlatList
         data={teams}

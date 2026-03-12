@@ -4,9 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
 import {
-    ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text,
+    ActivityIndicator, Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { getActiveNow, getBroadcasts, setActiveNow } from '../services/api';
 
 export default function DashboardScreen({ navigation, route }) {
@@ -20,9 +21,11 @@ export default function DashboardScreen({ navigation, route }) {
   const [nearMeOnly, setNearMeOnly] = useState(false);
   const [myLocation, setMyLocation] = useState(null);
   const geocodeCache = useRef({});
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     try {
+      setError(null);
       const [myRes, feedRes, activeRes] = await Promise.all([
         getBroadcasts(null, true),
         getBroadcasts(),
@@ -33,7 +36,7 @@ export default function DashboardScreen({ navigation, route }) {
       setFeed((feedRes.broadcasts || []).filter(b => b.creatorId !== user?.uid));
       setActiveUsers(activeRes.active || []);
     } catch (e) {
-      console.warn('Dashboard load error', e);
+      setError('Could not load dashboard. Pull to refresh or tap Retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -49,7 +52,7 @@ export default function DashboardScreen({ navigation, route }) {
   const toggleActive = async () => {
     const next = !isActive;
     setIsActive(next);
-    try { await setActiveNow(next); } catch (e) { setIsActive(!next); }
+    try { await setActiveNow(next); } catch (e) { setIsActive(!next); Alert.alert('Error', 'Could not update active status. Try again.'); }
   };
 
   const toggleNearMe = async () => {
@@ -207,6 +210,8 @@ export default function DashboardScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       {/* Active Now Toggle */}
       <TouchableOpacity

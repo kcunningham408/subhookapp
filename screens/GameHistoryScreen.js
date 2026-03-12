@@ -5,6 +5,7 @@ import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
+import ErrorBanner from '../components/ErrorBanner';
 import { getGameHistory } from '../services/api';
 
 export default function GameHistoryScreen({ navigation, route }) {
@@ -13,13 +14,15 @@ export default function GameHistoryScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState('all'); // 'all' | 'created' | 'joined'
+  const [error, setError] = useState(null);
 
   const load = async () => {
     try {
+      setError(null);
       const res = await getGameHistory();
       setData(res);
     } catch (e) {
-      console.warn('History load error', e);
+      setError('Could not load game history. Tap Retry.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -47,6 +50,8 @@ export default function GameHistoryScreen({ navigation, route }) {
         <Text style={s.title}>Game History</Text>
         <Text style={s.sub}>{stats.totalGames || 0} total games</Text>
       </LinearGradient>
+
+      <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
       {/* Stats Cards */}
       <View style={s.statsRow}>
