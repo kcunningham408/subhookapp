@@ -6,7 +6,7 @@ import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import ErrorBoundary from './components/ErrorBoundary';
@@ -29,16 +29,6 @@ import SettingsScreen from './screens/SettingsScreen';
 import TeamsScreen from './screens/TeamsScreen';
 
 import { getConversations, getStoredUser, registerPushToken } from './services/api';
-
-import { LogBox } from 'react-native';
-LogBox.ignoreAllLogs(false); // Show all warnings
-
-// Global error handler — prevents silent black screen crashes
-const originalHandler = ErrorUtils.getGlobalHandler();
-ErrorUtils.setGlobalHandler((error, isFatal) => {
-  console.error('GLOBAL ERROR:', error);
-  if (originalHandler) originalHandler(error, isFatal);
-});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -171,7 +161,15 @@ export default function App() {
   const pendingDeepLink = useRef(null);
 
   useEffect(() => {
-    getStoredUser().then((res) => setUser(res?.user ?? null));
+    let timeout;
+    getStoredUser()
+      .then((res) => setUser(res?.user ?? null))
+      .catch(() => setUser(null));
+    // Safety: if server is slow/down, go to login after 8 seconds
+    timeout = setTimeout(() => {
+      setUser((prev) => (prev === undefined ? null : prev));
+    }, 8000);
+    return () => clearTimeout(timeout);
   }, []);
 
   // When user logs in, navigate to any pending deep link
@@ -227,9 +225,12 @@ export default function App() {
 
   if (user === undefined) {
     return (
+      <ErrorBoundary>
       <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#3b82f6" size="large" />
+        <Text style={{ color: '#64748b', marginTop: 16, fontSize: 14 }}>Loading SubHook...</Text>
       </View>
+      </ErrorBoundary>
     );
   }
 
