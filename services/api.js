@@ -14,7 +14,12 @@ const apiRequest = async (path, options = {}) => {
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.ok ? 'Invalid server response' : `Server error (${res.status})`);
+  }
   if (!res.ok) throw new Error(data.message || 'Request failed');
   return data;
 };

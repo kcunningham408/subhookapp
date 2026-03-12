@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert,
@@ -20,6 +20,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   const [broadcast, setBroadcast] = useState(initial || null);
   const [loading, setLoading] = useState(!initial);
   const [refreshing, setRefreshing] = useState(false);
+  const [responding, setResponding] = useState(false);
   const [mapCoords, setMapCoords] = useState(null);
   const [geocoding, setGeocoding] = useState(false);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -43,22 +44,24 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
   // Geocode the location address/name to coordinates for the map
   useEffect(() => {
+    let cancelled = false;
     const geocode = async () => {
       const addr = broadcast.locationAddress || broadcast.locationName;
       if (!addr) return;
       setGeocoding(true);
       try {
         const results = await Location.geocodeAsync(addr);
-        if (results.length > 0) {
+        if (!cancelled && results.length > 0) {
           setMapCoords({ latitude: results[0].latitude, longitude: results[0].longitude });
         }
       } catch (e) {
         console.warn('Geocode failed', e);
       } finally {
-        setGeocoding(false);
+        if (!cancelled) setGeocoding(false);
       }
     };
     geocode();
+    return () => { cancelled = true; };
   }, [broadcast?.locationAddress, broadcast?.locationName]);
 
   if (loading || !broadcast) {
@@ -96,7 +99,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   };
 
   const handleRespond = async (action) => {
-    setLoading(true);
+    setResponding(true);
     try {
       await respondToBroadcast(broadcast.id, action);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -110,7 +113,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
-      setLoading(false);
+      setResponding(false);
     }
   };
 
@@ -235,16 +238,16 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   };
 
   const openDirections = () => {
-    const loc = broadcast.locationName || broadcast.locationAddress || '';
-    if (!loc) return Alert.alert('No Location', 'This broadcast has no location set.');
-    const encoded = encodeURIComponent(loc);
+    const address = broadcast.locationAddress || broadcast.locationName || '';
+    if (!address) return Alert.alert('No Location', 'This broadcast has no location set.');
+    const encoded = encodeURIComponent(address);
     const url = Platform.select({
-      ios: `maps:?q=${encoded}`,
+      ios: `maps://maps.apple.com/?daddr=${encoded}`,
       android: `geo:0,0?q=${encoded}`,
-      default: `https://maps.google.com/?q=${encoded}`,
+      default: `https://maps.apple.com/?daddr=${encoded}`,
     });
     Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://maps.google.com/?q=${encoded}`);
+      Linking.openURL(`https://maps.apple.com/?daddr=${encoded}`);
     });
   };
 
@@ -382,9 +385,9 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
       {/* Player actions: respond or confirm attendance */}
       {!isOwner && broadcast.status === 'open' && !alreadyResponded && (
-        <TouchableOpacity style={s.respondBtn} onPress={() => handleRespond('accept')} disabled={loading} activeOpacity={0.8}>
+        <TouchableOpacity style={s.respondBtn} onPress={() => handleRespond('accept')} disabled={responding} activeOpacity={0.8}>
           <LinearGradient colors={['#3b82f6', '#2563eb']} style={s.respondBtnInner}>
-            {loading ? <ActivityIndicator color="#fff" /> : (
+            {responding ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color="#fff" />
                 <Text style={s.respondBtnText}>I'm Interested</Text>
