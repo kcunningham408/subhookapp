@@ -2,7 +2,8 @@
   "expo": {
     "name": "SubHook",
     "slug": "subhook",
-    "version": "1.0.0",
+    "scheme": "subhook",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -14,7 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecmd.subhook",
-      "buildNumber": "25",
+      "buildNumber": "26",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "SubHook uses your location to show fields on the map and provide directions."
@@ -35,7 +36,8 @@
     },
     "owner": "kcunningham408",
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-notifications"
     ]
   }
 }
