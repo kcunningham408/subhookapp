@@ -28,6 +28,8 @@ const deleteToken = async () => {
 const apiRequest = async (path, options = {}) => {
   const token = await getToken();
   let res;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     res = await fetch(`${API_URL}${path}`, {
       method: options.method || 'GET',
@@ -36,9 +38,12 @@ const apiRequest = async (path, options = {}) => {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+      signal: controller.signal,
     });
   } catch {
     throw new Error('No internet connection. Please check your network and try again.');
+  } finally {
+    clearTimeout(timeout);
   }
   let data;
   try {
@@ -74,6 +79,14 @@ export const login = async (phone, password) => {
   await setToken(data.token);
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
   return data;
+};
+
+export const getCachedUser = async () => {
+  try {
+    const cached = await AsyncStorage.getItem(USER_KEY);
+    if (cached) return { user: JSON.parse(cached) };
+  } catch {}
+  return null;
 };
 
 export const getStoredUser = async () => {

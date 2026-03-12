@@ -29,7 +29,7 @@ import GameHistoryScreen from './screens/GameHistoryScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import TeamsScreen from './screens/TeamsScreen';
 
-import { getConversations, getStoredUser, registerPushToken } from './services/api';
+import { getCachedUser, getConversations, getStoredUser, registerPushToken } from './services/api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -163,13 +163,20 @@ export default function App() {
 
   useEffect(() => {
     let timeout;
+    // 1. Show cached user instantly (no network needed)
+    getCachedUser()
+      .then((cached) => {
+        if (cached?.user) setUser(cached.user);
+      })
+      .catch(() => {});
+    // 2. Verify with server in background
     getStoredUser()
       .then((res) => setUser(res?.user ?? null))
       .catch(() => setUser(null));
-    // Safety: if server is slow/down, go to login after 8 seconds
+    // 3. Safety: if everything is slow, go to login after 5 seconds
     timeout = setTimeout(() => {
       setUser((prev) => (prev === undefined ? null : prev));
-    }, 8000);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, []);
 
@@ -229,7 +236,8 @@ export default function App() {
       <ErrorBoundary>
       <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#3b82f6" size="large" />
-        <Text style={{ color: '#64748b', marginTop: 16, fontSize: 14 }}>Loading SubHook...</Text>
+        <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Loading SubHook...</Text>
+        <Text style={{ color: '#475569', marginTop: 8, fontSize: 12 }}>Connecting to server...</Text>
       </View>
       </ErrorBoundary>
     );
@@ -244,6 +252,11 @@ export default function App() {
       <NavigationContainer
         ref={navigationRef}
         linking={linking}
+        fallback={
+          <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator color="#3b82f6" size="large" />
+          </View>
+        }
         onUnhandledAction={(action) => {
           // Deep link arrived while not logged in — stash it
           if (action?.payload?.name === 'BroadcastDetail' && action.payload.params?.broadcastId) {
