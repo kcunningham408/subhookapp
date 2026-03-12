@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { getStoredUser, logout, saveProfile, setActiveNow, deleteAccount } from '../services/api';
+import { deleteAccount, getStoredUser, logout, saveProfile, setActiveNow } from '../services/api';
 
 const POSITIONS = ['Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
@@ -111,8 +111,11 @@ export default function ProfileScreen({ navigation, route }) {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: async () => {
-        await logout();
-        setUser(null);
+        try {
+          await logout();
+        } finally {
+          setUser(null);
+        }
       }},
     ]);
   };
@@ -127,10 +130,11 @@ export default function ProfileScreen({ navigation, route }) {
           try {
             await deleteAccount();
             await logout();
-            setUser(null);
           } catch (e) {
             Alert.alert('Error', e.message);
+            return;
           }
+          setUser(null);
         }},
       ]
     );

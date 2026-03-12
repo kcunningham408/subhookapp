@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
 import {
     ActivityIndicator, FlatList, Image, Modal, RefreshControl, StyleSheet, Text,
@@ -51,7 +51,7 @@ export default function SearchScreen({ navigation, route }) {
   };
 
   const computeDistances = useCallback(async (playerList) => {
-    if (!user.homeZip) return;
+    if (!user?.homeZip) return;
     const userCoords = await geocodeZip(user.homeZip);
     if (!userCoords) return;
     const distMap = {};
@@ -66,7 +66,7 @@ export default function SearchScreen({ navigation, route }) {
       }
     }
     setDistances(distMap);
-  }, [user.homeZip]);
+  }, [user?.homeZip]);
 
   const load = useCallback(async () => {
     setLoading(true);
