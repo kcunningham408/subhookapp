@@ -1,13 +1,76 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Calendar from 'expo-calendar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator, RefreshControl, SectionList, StyleSheet, Text,
+    ActivityIndicator, Alert, Platform, RefreshControl, SectionList, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
+import { normalizePosition, normalizePositions } from '../components/FieldPositionPicker';
 import { getMyGames } from '../services/api';
+
+const addToCalendar = async (game) => {
+  const { status } = await Calendar.requestCalendarPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert('Permission Required', 'Please allow calendar access to add games.');
+    return;
+  }
+
+  // Get the default calendar (iCloud on iOS, Google on Android)
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const defaultCal = Platform.OS === 'ios'
+    ? calendars.find(c => c.allowsModifications && c.source?.name === 'iCloud')
+      || calendars.find(c => c.allowsModifications)
+    : calendars.find(c => c.allowsModifications && c.isPrimary)
+      || calendars.find(c => c.allowsModifications);
+
+  if (!defaultCal) {
+    Alert.alert('No Calendar', 'No writable calendar found on this device.');
+    return;
+  }
+
+  // Parse date from format like "Saturday 3/15" and time like "6:30 PM"
+  const now = new Date();
+  let startDate = new Date();
+  const dateStr = game.date || '';
+  const match = dateStr.match(/(\d{1,2})\/(\d{1,2})/);
+  if (match) {
+    startDate.setMonth(parseInt(match[1]) - 1);
+    startDate.setDate(parseInt(match[2]));
+    if (startDate < now) startDate.setFullYear(startDate.getFullYear() + 1);
+  }
+
+  if (game.time) {
+    const tm = game.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (tm) {
+      let h = parseInt(tm[1]);
+      const m = parseInt(tm[2]);
+      if (tm[3]?.toUpperCase() === 'PM' && h < 12) h += 12;
+      if (tm[3]?.toUpperCase() === 'AM' && h === 12) h = 0;
+      startDate.setHours(h, m, 0, 0);
+    }
+  } else {
+    startDate.setHours(18, 0, 0, 0); // default 6 PM
+  }
+
+  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2hr game
+
+  try {
+    await Calendar.createEventAsync(defaultCal.id, {
+      title: `SubHook: ${game.locationName || 'Softball Game'}`,
+      startDate,
+      endDate,
+      location: game.locationAddress || game.locationName || '',
+      notes: `Positions: ${normalizePositions(game.positions).join(', ')}\n${game.notes || ''}`.trim(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    Alert.alert('Added!', 'Game added to your calendar.');
+  } catch (e) {
+    Alert.alert('Error', 'Could not add to calendar.');
+  }
+};
 
 const STATUS_CONFIG = {
   open: { color: '#3b82f6', icon: 'radio-button-on', label: 'OPEN' },
@@ -100,7 +163,7 @@ export default function CalendarScreen({ navigation, route }) {
           <View style={s.posRow}>
             {item.positions.map((p) => (
               <View key={p} style={s.posPill}>
-                <Text style={s.posPillText}>{p}</Text>
+                <Text style={s.posPillText}>{normalizePosition(p)}</Text>
               </View>
             ))}
           </View>
@@ -113,6 +176,14 @@ export default function CalendarScreen({ navigation, route }) {
               {type === 'created' ? 'You posted' : 'You responded'}
             </Text>
           </View>
+          <TouchableOpacity
+            style={s.calBtn}
+            onPress={(e) => { e.stopPropagation(); addToCalendar(item); }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="calendar-outline" size={15} color="#3b82f6" />
+            <Text style={s.calBtnText}>Add to Cal</Text>
+          </TouchableOpacity>
           <Ionicons name="chevron-forward" size={16} color="#334155" />
         </View>
       </TouchableOpacity>
@@ -211,6 +282,8 @@ const s = StyleSheet.create({
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1e293b' },
   typePill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   typeText: { fontSize: 12, fontWeight: '600' },
+  calBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#3b82f615', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  calBtnText: { fontSize: 11, fontWeight: '700', color: '#3b82f6' },
   emptyWrap: { alignItems: 'center', marginTop: 80 },
   empty: { color: '#475569', fontSize: 16, fontWeight: '600', marginTop: 14 },
   emptySub: { color: '#334155', fontSize: 13, marginTop: 4 },

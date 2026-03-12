@@ -2,12 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Alert, Platform, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import MapView, { Callout, Circle, Marker } from 'react-native-maps';
+import { normalizePositions } from '../components/FieldPositionPicker';
 import { getBroadcasts } from '../services/api';
 
 const TYPE_COLORS = {
@@ -29,9 +30,31 @@ export default function HeatMapScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState(DEFAULT_REGION);
   const [filter, setFilter] = useState('all'); // 'all' | 'manager' | 'player'
+  const gotUserLocation = useRef(false);
 
   // Geocode cache to avoid repeated lookups
   const geocodeCache = useRef({});
+
+  // Center on user's GPS on first load
+  useEffect(() => {
+    if (gotUserLocation.current) return;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        gotUserLocation.current = true;
+        const userRegion = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          latitudeDelta: 0.2,
+          longitudeDelta: 0.2,
+        };
+        setRegion(userRegion);
+        mapRef.current?.animateToRegion(userRegion, 600);
+      } catch {}
+    })();
+  }, []);
 
   const geocode = async (addr) => {
     if (!addr) return null;
@@ -53,9 +76,12 @@ export default function HeatMapScreen({ navigation, route }) {
       const res = await getBroadcasts();
       const all = res.broadcasts || [];
 
-      // Geocode all broadcasts in parallel
+      // Use stored coordinates if available, otherwise geocode
       const withCoords = await Promise.all(
         all.map(async (b) => {
+          if (b.latitude && b.longitude) {
+            return { ...b, coords: { latitude: b.latitude, longitude: b.longitude } };
+          }
           const addr = b.locationAddress || b.locationName;
           const coords = await geocode(addr);
           return coords ? { ...b, coords } : null;
@@ -65,8 +91,8 @@ export default function HeatMapScreen({ navigation, route }) {
       const valid = withCoords.filter(Boolean);
       setBroadcasts(valid);
 
-      // Fit map to show all markers
-      if (valid.length > 0 && mapRef.current) {
+      // Only fit to markers on first load if we don't have user GPS yet
+      if (valid.length > 0 && mapRef.current && !gotUserLocation.current) {
         const coords = valid.map((b) => b.coords);
         mapRef.current.fitToCoordinates(coords, {
           edgePadding: { top: 120, right: 60, bottom: 120, left: 60 },
@@ -152,7 +178,7 @@ export default function HeatMapScreen({ navigation, route }) {
                   </Text>
                   {b.positions?.length > 0 && (
                     <Text style={s.calloutPositions} numberOfLines={1}>
-                      {b.positions.join(', ')}
+                      {normalizePositions(b.positions).join(', ')}
                     </Text>
                   )}
                   <Text style={s.calloutDate}>

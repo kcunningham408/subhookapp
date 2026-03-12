@@ -8,9 +8,10 @@ import {
     TextInput, TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
+import { POSITIONS as POS_LIST, LEGACY_MAP, normalizePosition } from '../components/FieldPositionPicker';
 import { getOrCreateConversation, searchPlayers } from '../services/api';
 
-const POSITIONS = ['All', 'Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
+const POSITIONS = ['All', ...POS_LIST.map(p => p.key)];
 
 const SKILL_COLORS = {
   'Recreational': '#64748b',
@@ -156,7 +157,7 @@ export default function SearchScreen({ navigation, route }) {
           <View style={s.posRow}>
             {item.positions.map((p) => (
               <View key={p} style={s.posChip}>
-                <Text style={s.posChipText}>{p}</Text>
+                <Text style={s.posChipText}>{normalizePosition(p)}</Text>
               </View>
             ))}
           </View>

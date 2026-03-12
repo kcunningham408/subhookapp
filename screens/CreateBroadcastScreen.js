@@ -8,8 +8,8 @@ import {
     ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { createBroadcast } from '../services/api';
-
-const POSITIONS = ['Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
+import FieldPositionPicker from '../components/FieldPositionPicker';
+import LocationSearchInput from '../components/LocationSearchInput';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const formatDate = (d) => {
@@ -33,6 +33,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
   const [positions, setPositions] = useState([]);
   const [locationName, setLocationName] = useState('');
   const [locationAddress, setLocationAddress] = useState('');
+  const [locationCoords, setLocationCoords] = useState(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -52,6 +53,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
         positions,
         locationName: locationName.trim(),
         locationAddress: locationAddress.trim(),
+        ...(locationCoords ? { latitude: locationCoords.latitude, longitude: locationCoords.longitude } : {}),
         notes: notes.trim(),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -188,18 +190,11 @@ export default function CreateBroadcastScreen({ navigation, route }) {
         <Text style={s.label}>
           <Ionicons name="people" size={12} color="#94a3b8" />  Positions
         </Text>
-        <View style={s.chips}>
-          {POSITIONS.map((p) => (
-            <TouchableOpacity
-              key={p}
-              style={[s.chip, positions.includes(p) && s.chipActive]}
-              onPress={() => toggle(p)}
-            >
-              {positions.includes(p) && <Ionicons name="checkmark-circle" size={14} color="#fff" style={{ marginRight: 4 }} />}
-              <Text style={[s.chipText, positions.includes(p) && s.chipTextActive]}>{p}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <FieldPositionPicker
+          selected={positions}
+          onToggle={toggle}
+          size={280}
+        />
         {positions.length > 0 && (
           <Text style={s.chipCount}>{positions.length} position{positions.length !== 1 ? 's' : ''} selected</Text>
         )}
@@ -211,10 +206,23 @@ export default function CreateBroadcastScreen({ navigation, route }) {
         <TextInput style={s.input} placeholder="e.g. Central Park Field 3" placeholderTextColor="#475569" value={locationName} onChangeText={setLocationName} />
 
         <Text style={s.label}>
-          <Ionicons name="navigate" size={12} color="#94a3b8" />  Address (for directions)
+          <Ionicons name="navigate" size={12} color="#94a3b8" />  Address (search Apple Maps)
         </Text>
-        <TextInput style={s.input} placeholder="e.g. 123 Main St, San Jose, CA" placeholderTextColor="#475569" value={locationAddress} onChangeText={setLocationAddress} />
-        <Text style={s.hint}>Players can tap for turn-by-turn directions</Text>
+        <LocationSearchInput
+          value={locationAddress}
+          onSelect={(loc) => {
+            if (loc) {
+              setLocationAddress(loc.address);
+              setLocationCoords({ latitude: loc.latitude, longitude: loc.longitude });
+              if (!locationName) setLocationName(loc.name);
+            } else {
+              setLocationAddress('');
+              setLocationCoords(null);
+            }
+          }}
+          placeholder="Search for a field or address…"
+        />
+        <Text style={s.hint}>Search Apple Maps for the field location</Text>
 
         {/* Notes */}
         <Text style={s.label}>

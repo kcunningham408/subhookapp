@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Calendar from 'expo-calendar';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
@@ -9,6 +10,7 @@ import {
     StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { normalizePosition, normalizePositions } from '../components/FieldPositionPicker';
 import {
     addComment, addToRoster, cancelBroadcast, closeBroadcast, confirmAttendance,
     confirmBroadcast, getBroadcast, getComments, getOrCreateConversation, removeFromRoster,
@@ -45,8 +47,12 @@ export default function BroadcastDetailScreen({ navigation, route }) {
     }
   }, [initial, paramId]);
 
-  // Geocode the location address/name to coordinates for the map
+  // Use stored coordinates if available, otherwise geocode
   useEffect(() => {
+    if (broadcast.latitude && broadcast.longitude) {
+      setMapCoords({ latitude: broadcast.latitude, longitude: broadcast.longitude });
+      return;
+    }
     let cancelled = false;
     const geocode = async () => {
       const addr = broadcast.locationAddress || broadcast.locationName;
@@ -65,7 +71,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
     };
     geocode();
     return () => { cancelled = true; };
-  }, [broadcast?.locationAddress, broadcast?.locationName]);
+  }, [broadcast?.locationAddress, broadcast?.locationName, broadcast?.latitude, broadcast?.longitude]);
 
   if (loading || !broadcast) {
     return (
@@ -270,16 +276,74 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
   const openDirections = () => {
     const address = broadcast.locationAddress || broadcast.locationName || '';
-    if (!address) return Alert.alert('No Location', 'This broadcast has no location set.');
-    const encoded = encodeURIComponent(address);
-    const url = Platform.select({
-      ios: `maps://maps.apple.com/?daddr=${encoded}`,
-      android: `geo:0,0?q=${encoded}`,
-      default: `https://maps.apple.com/?daddr=${encoded}`,
-    });
+    const hasCoords = broadcast.latitude && broadcast.longitude;
+    if (!address && !hasCoords) return Alert.alert('No Location', 'This broadcast has no location set.');
+    let url;
+    if (hasCoords) {
+      const ll = `${broadcast.latitude},${broadcast.longitude}`;
+      const label = encodeURIComponent(broadcast.locationName || address);
+      url = Platform.select({
+        ios: `maps://maps.apple.com/?daddr=${ll}&q=${label}`,
+        android: `geo:${ll}?q=${ll}(${label})`,
+        default: `https://maps.apple.com/?daddr=${ll}`,
+      });
+    } else {
+      const encoded = encodeURIComponent(address);
+      url = Platform.select({
+        ios: `maps://maps.apple.com/?daddr=${encoded}`,
+        android: `geo:0,0?q=${encoded}`,
+        default: `https://maps.apple.com/?daddr=${encoded}`,
+      });
+    }
     Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://maps.apple.com/?daddr=${encoded}`);
+      const fallback = hasCoords
+        ? `https://maps.apple.com/?daddr=${broadcast.latitude},${broadcast.longitude}`
+        : `https://maps.apple.com/?daddr=${encodeURIComponent(address)}`;
+      Linking.openURL(fallback);
     });
+  };
+
+  const handleAddToCalendar = async () => {
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow calendar access.');
+      return;
+    }
+    const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+    const defaultCal = Platform.OS === 'ios'
+      ? calendars.find(c => c.allowsModifications && c.source?.name === 'iCloud') || calendars.find(c => c.allowsModifications)
+      : calendars.find(c => c.allowsModifications && c.isPrimary) || calendars.find(c => c.allowsModifications);
+    if (!defaultCal) { Alert.alert('No Calendar', 'No writable calendar found.'); return; }
+
+    let startDate = new Date();
+    const dateStr = broadcast.date || '';
+    const match = dateStr.match(/(\d{1,2})\/(\d{1,2})/);
+    if (match) {
+      startDate.setMonth(parseInt(match[1]) - 1);
+      startDate.setDate(parseInt(match[2]));
+      if (startDate < new Date()) startDate.setFullYear(startDate.getFullYear() + 1);
+    }
+    if (broadcast.time) {
+      const tm = broadcast.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (tm) {
+        let h = parseInt(tm[1]);
+        if (tm[3]?.toUpperCase() === 'PM' && h < 12) h += 12;
+        if (tm[3]?.toUpperCase() === 'AM' && h === 12) h = 0;
+        startDate.setHours(h, parseInt(tm[2]), 0, 0);
+      }
+    } else { startDate.setHours(18, 0, 0, 0); }
+    const endDate = new Date(startDate.getTime() + 2 * 3600000);
+
+    try {
+      await Calendar.createEventAsync(defaultCal.id, {
+        title: `SubHook: ${broadcast.locationName || 'Softball Game'}`,
+        startDate, endDate,
+        location: broadcast.locationAddress || broadcast.locationName || '',
+        notes: `Positions: ${normalizePositions(broadcast.positions).join(', ')}\n${broadcast.notes || ''}`.trim(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+      Alert.alert('Added!', 'Game added to your calendar.');
+    } catch { Alert.alert('Error', 'Could not add to calendar.'); }
   };
 
   const sc = statusColor(broadcast.status);
@@ -322,6 +386,10 @@ export default function BroadcastDetailScreen({ navigation, route }) {
           <View style={s.detailRow}>
             <Ionicons name="calendar" size={16} color="#3b82f6" />
             <Text style={s.detailText}>{broadcast.date}{broadcast.time ? ` @ ${broadcast.time}` : ''}</Text>
+            <TouchableOpacity style={s.addCalBtn} onPress={handleAddToCalendar}>
+              <Ionicons name="add-circle-outline" size={14} color="#3b82f6" />
+              <Text style={s.addCalText}>Add to Cal</Text>
+            </TouchableOpacity>
           </View>
           {broadcast.locationName ? (
             <TouchableOpacity style={s.detailRow} onPress={openDirections}>
@@ -334,7 +402,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
             <View style={s.posRow}>
               {broadcast.positions.map((p) => (
                 <View key={p} style={s.posChip}>
-                  <Text style={s.posChipText}>{p}</Text>
+                  <Text style={s.posChipText}>{normalizePosition(p)}</Text>
                 </View>
               ))}
             </View>
@@ -709,7 +777,9 @@ const s = StyleSheet.create({
   creatorName: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 16 },
   detailRows: { gap: 10 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  detailText: { fontSize: 15, color: '#e2e8f0' },
+  detailText: { fontSize: 15, color: '#e2e8f0', flex: 1 },
+  addCalBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#3b82f615', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  addCalText: { fontSize: 11, fontWeight: '700', color: '#3b82f6' },
   posRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   posChip: { backgroundColor: '#3b82f615', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
   posChipText: { fontSize: 13, color: '#3b82f6', fontWeight: '600' },

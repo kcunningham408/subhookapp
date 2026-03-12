@@ -7,6 +7,7 @@ import {
     Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, invitePlayer, reportUser } from '../services/api';
+import { normalizePosition } from '../components/FieldPositionPicker';
 
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -250,7 +251,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
           <View style={s.posRow}>
             {profile.positions.map((p) => (
               <View key={p} style={s.posPill}>
-                <Text style={s.posPillText}>{p}</Text>
+                <Text style={s.posPillText}>{normalizePosition(p)}</Text>
               </View>
             ))}
           </View>

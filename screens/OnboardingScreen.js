@@ -7,9 +7,9 @@ import {
     StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { saveProfile, updateUser } from '../services/api';
+import FieldPositionPicker, { POSITION_KEYS } from '../components/FieldPositionPicker';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const POSITIONS = ['Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -106,13 +106,12 @@ export default function OnboardingScreen({ navigation, route }) {
           )}
 
           {index === 1 && (
-            <View style={s.chips}>
-              {POSITIONS.map((p) => (
-                <TouchableOpacity key={p} style={[s.chip, positions.includes(p) && s.chipActive]} onPress={() => toggleItem(p, positions, setPositions)}>
-                  {positions.includes(p) && <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />}
-                  <Text style={[s.chipText, positions.includes(p) && s.chipTextActive]}>{p}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={{ alignItems: 'center' }}>
+              <FieldPositionPicker
+                selected={positions}
+                onToggle={(key) => toggleItem(key, positions, setPositions)}
+                size={SCREEN_W * 0.75}
+              />
               {positions.length > 0 && <Text style={s.chipCount}>{positions.length} selected</Text>}
             </View>
           )}

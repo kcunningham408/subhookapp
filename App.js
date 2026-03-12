@@ -182,11 +182,19 @@ export default function App() {
     });
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
-    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(async (response) => {
       const data = response.notification.request.content.data;
       if (!data?.type || !navigationRef.isReady()) return;
-      setTimeout(() => {
-        if (data.type === 'broadcast_response' || data.type === 'roster_added' ||
+      setTimeout(async () => {
+        if (data.type === 'new_message' && data.conversationId) {
+          try {
+            const res = await getConversations();
+            const convo = (res.conversations || []).find(c => c.id === data.conversationId);
+            if (convo) {
+              navigationRef.navigate('Chat', { conversation: convo, user });
+            }
+          } catch {}
+        } else if (data.type === 'broadcast_response' || data.type === 'roster_added' ||
             data.type === 'waitlist_added' || data.type === 'attendance_confirmed' ||
             data.type === 'promoted_from_waitlist' || data.type === 'game_reminder' ||
             data.type === 'new_broadcast') {

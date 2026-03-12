@@ -8,6 +8,7 @@ import {
     TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
+import { normalizePosition } from '../components/FieldPositionPicker';
 import { getActiveNow, getBroadcasts, setActiveNow } from '../services/api';
 
 export default function DashboardScreen({ navigation, route }) {
@@ -159,7 +160,7 @@ export default function DashboardScreen({ navigation, route }) {
           <View style={s.positionRow}>
             {item.positions.slice(0, 3).map((p) => (
               <View key={p} style={s.posChip}>
-                <Text style={s.posChipText}>{p}</Text>
+                <Text style={s.posChipText}>{normalizePosition(p)}</Text>
               </View>
             ))}
             {item.positions.length > 3 && (
@@ -263,7 +264,7 @@ export default function DashboardScreen({ navigation, route }) {
                 </View>
                 <Text style={s.activeCardName} numberOfLines={1}>{item.name?.split(' ')[0]}</Text>
                 <Text style={s.activeCardRole} numberOfLines={1}>
-                  {(item.positions || []).slice(0, 2).join(', ') || 'Player'}
+                  {(item.positions || []).slice(0, 2).map(normalizePosition).join(', ') || 'Player'}
                 </Text>
               </TouchableOpacity>
             )}

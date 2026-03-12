@@ -10,8 +10,7 @@ import {
     TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { deleteAccount, getStoredUser, logout, saveProfile, setActiveNow } from '../services/api';
-
-const POSITIONS = ['Pitcher', 'Catcher', '1st Base', '2nd Base', '3rd Base', 'Shortstop', 'Left Field', 'Center Field', 'Right Field'];
+import FieldPositionPicker, { normalizePositions } from '../components/FieldPositionPicker';
 const SKILL_LEVELS = ['Recreational', 'Intermediate', 'Competitive', 'Elite'];
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -39,7 +38,7 @@ export default function ProfileScreen({ navigation, route }) {
           if (res?.profile) {
             const p = res.profile;
             setProfile(p);
-            setPositions(p.positions || []);
+            setPositions(normalizePositions(p.positions));
             setSkillLevel(p.skillLevel || '');
             setTravelRadius(String(p.travelRadius || 25));
             setHomeZip(p.homeZip || '');
@@ -61,7 +60,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   const togglePos = (p) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setPositions(positions.includes(p) ? positions.filter((x) => x !== p) : [...positions, p]);
+    setPositions(prev => prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]);
   };
 
   const pickPhoto = async () => {
@@ -246,18 +245,11 @@ export default function ProfileScreen({ navigation, route }) {
       <Text style={s.section}>
         <Ionicons name="people" size={13} color="#94a3b8" />  Positions
       </Text>
-      <View style={s.chips}>
-        {POSITIONS.map((p) => (
-          <TouchableOpacity
-            key={p}
-            style={[s.chip, positions.includes(p) && s.chipActive]}
-            onPress={() => togglePos(p)}
-          >
-            {positions.includes(p) && <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />}
-            <Text style={[s.chipText, positions.includes(p) && s.chipTextActive]}>{p}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <FieldPositionPicker
+        selected={positions}
+        onToggle={togglePos}
+        size={280}
+      />
 
       {/* Skill Level */}
       <Text style={s.section}>
