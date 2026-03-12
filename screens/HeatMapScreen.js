@@ -51,7 +51,7 @@ export default function HeatMapScreen({ navigation, route }) {
           longitudeDelta: 0.2,
         };
         setRegion(userRegion);
-        mapRef.current?.animateToRegion(userRegion, 600);
+        mapRef.current?.animateToRegion?.(userRegion, 600);
       } catch {}
     })();
   }, []);
@@ -92,7 +92,7 @@ export default function HeatMapScreen({ navigation, route }) {
       setBroadcasts(valid);
 
       // Only fit to markers on first load if we don't have user GPS yet
-      if (valid.length > 0 && mapRef.current && !gotUserLocation.current) {
+      if (valid.length > 0 && mapRef.current?.fitToCoordinates && !gotUserLocation.current) {
         const coords = valid.map((b) => b.coords);
         mapRef.current.fitToCoordinates(coords, {
           edgePadding: { top: 120, right: 60, bottom: 120, left: 60 },
@@ -100,7 +100,8 @@ export default function HeatMapScreen({ navigation, route }) {
         });
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not load map data. Try again later.');
+      console.warn('Map load error:', e);
+      Alert.alert('Error', e.message || 'Could not load map data. Try again later.');
     } finally {
       setLoading(false);
     }
@@ -245,7 +246,7 @@ export default function HeatMapScreen({ navigation, route }) {
               return;
             }
             const loc = await Location.getCurrentPositionAsync({});
-            mapRef.current?.animateToRegion({
+            mapRef.current?.animateToRegion?.({
               latitude: loc.coords.latitude,
               longitude: loc.coords.longitude,
               latitudeDelta: 0.15,
