@@ -18,7 +18,7 @@ import {
 } from '../services/api';
 
 export default function BroadcastDetailScreen({ navigation, route }) {
-  const { broadcast: initial, user, broadcastId: paramId } = route.params;
+  const { broadcast: initial, user, broadcastId: paramId } = route.params || {};
   const [broadcast, setBroadcast] = useState(initial || null);
   const [loading, setLoading] = useState(!initial);
   const [refreshing, setRefreshing] = useState(false);

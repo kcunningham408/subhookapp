@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -239,6 +240,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" />
       <NavigationContainer
         ref={navigationRef}
         linking={linking}
@@ -265,10 +267,10 @@ export default function App() {
               <Stack.Screen name="MainTabs">
                 {() => <MainTabs user={user} setUser={setUser} />}
               </Stack.Screen>
-              <Stack.Screen name="CreateBroadcast" component={CreateBroadcastScreen} />
-              <Stack.Screen name="BroadcastDetail" component={BroadcastDetailScreen} />
-              <Stack.Screen name="Chat" component={ChatScreen} />
-              <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} />
+              <Stack.Screen name="CreateBroadcast" component={CreateBroadcastScreen} initialParams={{ user }} />
+              <Stack.Screen name="BroadcastDetail" component={BroadcastDetailScreen} initialParams={{ user }} />
+              <Stack.Screen name="Chat" component={ChatScreen} initialParams={{ user }} />
+              <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} initialParams={{ user }} />
               <Stack.Screen name="GameHistory" component={GameHistoryScreen} />
               <Stack.Screen name="Settings" component={SettingsScreen} />
               <Stack.Screen name="Teams" component={TeamsScreen} />

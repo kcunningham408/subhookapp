@@ -15,12 +15,13 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecmd.subhook",
-      "buildNumber": "31",
+      "buildNumber": "32",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "SubHook uses your location to show fields on the map and provide directions.",
         "NSCalendarsUsageDescription": "SubHook can add games to your calendar so you never miss a game.",
-        "NSCalendarsFullAccessUsageDescription": "SubHook can add games to your calendar so you never miss a game."
+        "NSCalendarsFullAccessUsageDescription": "SubHook can add games to your calendar so you never miss a game.",
+        "NSPhotoLibraryUsageDescription": "SubHook uses your photos to set your profile picture."
       }
     },
     "android": {
@@ -40,7 +41,15 @@
     "plugins": [
       "@react-native-community/datetimepicker",
       "expo-notifications",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-location",
+      "expo-calendar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SubHook uses your photos to set your profile picture."
+        }
+      ]
     ]
   }
 }

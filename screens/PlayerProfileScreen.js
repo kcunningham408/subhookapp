@@ -12,7 +12,7 @@ import { normalizePosition } from '../components/FieldPositionPicker';
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
 export default function PlayerProfileScreen({ navigation, route }) {
-  const { profileUid: rawProfileUid, uid: deepLinkUid, user } = route.params;
+  const { profileUid: rawProfileUid, uid: deepLinkUid, user } = route.params || {};
   const profileUid = rawProfileUid || deepLinkUid;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
