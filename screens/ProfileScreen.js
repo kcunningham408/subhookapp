@@ -128,9 +128,8 @@ export default function ProfileScreen({ navigation, route }) {
         { text: 'Delete', style: 'destructive', onPress: async () => {
           try {
             await deleteAccount();
-            await logout();
           } catch (e) {
-            Alert.alert('Error', e.message);
+            Alert.alert('Error', e.message || 'Could not delete account. Try again.');
             return;
           }
           setUser(null);

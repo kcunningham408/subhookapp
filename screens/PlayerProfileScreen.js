@@ -12,7 +12,8 @@ import { normalizePosition } from '../components/FieldPositionPicker';
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
 export default function PlayerProfileScreen({ navigation, route }) {
-  const { profileUid, user } = route.params;
+  const { profileUid: rawProfileUid, uid: deepLinkUid, user } = route.params;
+  const profileUid = rawProfileUid || deepLinkUid;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ratings, setRatings] = useState(null);
@@ -275,7 +276,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
       )}
 
       {/* Message Button */}
-      {profileUid !== user.uid && (
+      {profileUid !== user?.uid && (
         <View style={{ marginHorizontal: 20, marginTop: 24, marginBottom: 40, gap: 12 }}>
           <TouchableOpacity onPress={handleMessage} activeOpacity={0.8}>
             <LinearGradient colors={['#3b82f6', '#8b5cf6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.msgBtn}>
@@ -295,7 +296,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
                       text: 'Send Invite',
                       onPress: async () => {
                         try {
-                          await invitePlayer(profileUid, `${user.name} wants you to sub for a game!`);
+                          await invitePlayer(profileUid, `${user?.name || 'Someone'} wants you to sub for a game!`);
                           Alert.alert('Invite Sent!', `${profile.name} has been notified.`);
                         } catch (e) {
                           Alert.alert('Error', e.message);

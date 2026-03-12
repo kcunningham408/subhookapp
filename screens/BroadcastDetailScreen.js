@@ -49,6 +49,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
   // Use stored coordinates if available, otherwise geocode
   useEffect(() => {
+    if (!broadcast) return;
     if (broadcast.latitude && broadcast.longitude) {
       setMapCoords({ latitude: broadcast.latitude, longitude: broadcast.longitude });
       return;
@@ -84,11 +85,11 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   const isOwner = broadcast.creatorId === user?.uid;
   const responses = broadcast.responses || [];
   const acceptedResponses = responses.filter((r) => r.action === 'accept');
-  const alreadyResponded = responses.some((r) => r.userId === user.uid);
+  const alreadyResponded = responses.some((r) => r.userId === user?.uid);
   const roster = broadcast.roster || [];
   const waitlist = broadcast.waitlist || [];
-  const myRosterEntry = roster.find(r => r.userId === user.uid);
-  const onWaitlist = waitlist.some(r => r.userId === user.uid);
+  const myRosterEntry = roster.find(r => r.userId === user?.uid);
+  const onWaitlist = waitlist.some(r => r.userId === user?.uid);
   const isExpired = broadcast.status === 'expired' || broadcast.status === 'closed' || broadcast.status === 'cancelled';
   const expiresAt = broadcast.expiresAt ? new Date(broadcast.expiresAt) : null;
 
@@ -144,7 +145,7 @@ export default function BroadcastDetailScreen({ navigation, route }) {
         ...broadcast,
         responses: [
           ...responses,
-          { userId: user.uid, name: user.name, action, at: new Date().toISOString() },
+          { userId: user?.uid, name: user?.name, action, at: new Date().toISOString() },
         ],
       });
     } catch (e) {

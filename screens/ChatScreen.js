@@ -9,14 +9,22 @@ import ErrorBanner from '../components/ErrorBanner';
 import { blockUser, getMessages, reportUser, sendMessage } from '../services/api';
 
 export default function ChatScreen({ navigation, route }) {
-  const { conversation, user } = route.params;
+  const { conversation, user } = route.params || {};
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
   const pollRef = useRef(null);
 
-  const otherId = conversation.participants?.find((p) => p !== user.uid);
+  if (!user || !conversation) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#94a3b8', fontSize: 16 }}>Unable to load chat.</Text>
+      </View>
+    );
+  }
+
+  const otherId = conversation.participants?.find((p) => p !== user?.uid);
   const otherName = conversation.participantNames?.[otherId] || 'Unknown';
 
   const [error, setError] = useState(null);
@@ -115,7 +123,7 @@ export default function ChatScreen({ navigation, route }) {
   };
 
   const renderMsg = ({ item }) => {
-    const isMe = item.senderId === user.uid;
+    const isMe = item.senderId === user?.uid;
     return (
       <View style={[s.bubbleWrap, isMe ? s.bubbleWrapMe : s.bubbleWrapThem]}>
         {!isMe && (

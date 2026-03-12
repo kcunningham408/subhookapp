@@ -27,21 +27,30 @@ const deleteToken = async () => {
 
 const apiRequest = async (path, options = {}) => {
   const token = await getToken();
-  const res = await fetch(`${API_URL}${path}`, {
-    method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
-  });
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: options.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(options.body ? { body: JSON.stringify(options.body) } : {}),
+    });
+  } catch {
+    throw new Error('No internet connection. Please check your network and try again.');
+  }
   let data;
   try {
     data = await res.json();
   } catch {
     throw new Error(res.ok ? 'Invalid server response' : `Server error (${res.status})`);
   }
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+  if (!res.ok) {
+    const err = new Error(data.message || 'Request failed');
+    err.status = res.status;
+    throw err;
+  }
   return data;
 };
 
@@ -74,9 +83,12 @@ export const getStoredUser = async () => {
     const data = await apiRequest('/auth/me');
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data;
-  } catch {
-    await deleteToken();
-    await AsyncStorage.removeItem(USER_KEY);
+  } catch (e) {
+    // Only clear auth on definitive auth failure, not network errors
+    if (e.status === 401 || e.status === 403 || e.status === 404) {
+      await deleteToken();
+      await AsyncStorage.removeItem(USER_KEY);
+    }
     return null;
   }
 };
@@ -101,7 +113,10 @@ export const logout = async () => {
 };
 
 export const deleteAccount = async () => {
-  return apiRequest('/auth/delete-account', { method: 'DELETE' });
+  const result = await apiRequest('/auth/delete-account', { method: 'DELETE' });
+  await deleteToken();
+  await AsyncStorage.removeItem(USER_KEY);
+  return result;
 };
 
 // ── User ────────────────────────────────────────────────────────────────────

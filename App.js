@@ -167,8 +167,11 @@ export default function App() {
   useEffect(() => {
     if (user && pendingDeepLink.current && navigationRef.isReady()) {
       const { screen, params } = pendingDeepLink.current;
+      const currentUser = user;
       pendingDeepLink.current = null;
-      setTimeout(() => navigationRef.navigate(screen, { ...params, user }), 300);
+      setTimeout(() => {
+        if (currentUser) navigationRef.navigate(screen, { ...params, user: currentUser });
+      }, 300);
     }
   }, [user]);
 
