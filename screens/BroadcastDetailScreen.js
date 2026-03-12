@@ -74,6 +74,13 @@ export default function BroadcastDetailScreen({ navigation, route }) {
     return () => { cancelled = true; };
   }, [broadcast?.locationAddress, broadcast?.locationName, broadcast?.latitude, broadcast?.longitude]);
 
+  // Load comments on mount
+  useEffect(() => {
+    if (broadcast?.id) {
+      getComments(broadcast.id).then(res => setComments(res.comments || [])).catch(() => {});
+    }
+  }, [broadcast?.id]);
+
   if (loading || !broadcast) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
@@ -111,13 +118,6 @@ export default function BroadcastDetailScreen({ navigation, route }) {
       Alert.alert('Error', 'Could not refresh. Please try again.');
     }
   };
-
-  // Load comments on mount
-  useEffect(() => {
-    if (broadcast?.id) {
-      getComments(broadcast.id).then(res => setComments(res.comments || [])).catch(() => {});
-    }
-  }, [broadcast?.id]);
 
   const handlePostComment = async () => {
     const trimmed = commentText.trim();

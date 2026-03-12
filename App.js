@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import ErrorBoundary from './components/ErrorBoundary';
 import BroadcastDetailScreen from './screens/BroadcastDetailScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import ChatScreen from './screens/ChatScreen';
@@ -28,6 +29,16 @@ import SettingsScreen from './screens/SettingsScreen';
 import TeamsScreen from './screens/TeamsScreen';
 
 import { getConversations, getStoredUser, registerPushToken } from './services/api';
+
+import { LogBox } from 'react-native';
+LogBox.ignoreAllLogs(false); // Show all warnings
+
+// Global error handler — prevents silent black screen crashes
+const originalHandler = ErrorUtils.getGlobalHandler();
+ErrorUtils.setGlobalHandler((error, isFatal) => {
+  console.error('GLOBAL ERROR:', error);
+  if (originalHandler) originalHandler(error, isFatal);
+});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -225,6 +236,7 @@ export default function App() {
   const needsOnboarding = user && !user.onboardingComplete;
 
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer
         ref={navigationRef}
@@ -265,5 +277,6 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
