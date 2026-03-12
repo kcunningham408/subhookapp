@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
 import {
     ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text,
@@ -16,6 +17,8 @@ export default function DashboardScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isActive, setIsActive] = useState(user?.activeNow || false);
+  const [nearMeOnly, setNearMeOnly] = useState(false);
+  const [myLocation, setMyLocation] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -48,10 +51,37 @@ export default function DashboardScreen({ navigation, route }) {
     try { await setActiveNow(next); } catch (e) { setIsActive(!next); }
   };
 
+  const toggleNearMe = async () => {
+    if (!nearMeOnly && !myLocation) {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setMyLocation(loc.coords);
+    }
+    setNearMeOnly(!nearMeOnly);
+  };
+
+  // Haversine distance in miles
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const radiusMiles = parseInt(user?.travelRadius) || 25;
+  const filteredFeed = nearMeOnly && myLocation
+    ? feed.filter(b => {
+        if (b.lat && b.lng) return getDistance(myLocation.latitude, myLocation.longitude, b.lat, b.lng) <= radiusMiles;
+        return true; // keep broadcasts without coords
+      })
+    : feed;
+
   const tonight = [];
   const later = [];
   const todayShort = new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-  feed.forEach((b) => {
+  filteredFeed.forEach((b) => {
     const d = (b.date || '').toLowerCase();
     if (d.includes('tonight') || d.includes('today') || d.includes(todayShort)) {
       tonight.push(b);
@@ -238,6 +268,20 @@ export default function DashboardScreen({ navigation, route }) {
         </LinearGradient>
       </TouchableOpacity>
 
+      {/* Near Me Filter */}
+      <View style={s.filterRow}>
+        <TouchableOpacity
+          style={[s.filterChip, nearMeOnly && s.filterChipActive]}
+          onPress={toggleNearMe}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="location" size={14} color={nearMeOnly ? '#fff' : '#64748b'} />
+          <Text style={[s.filterChipText, nearMeOnly && s.filterChipTextActive]}>
+            Near Me ({radiusMiles}mi)
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {myBroadcasts.length > 0 && (
         <>
           <View style={s.sectionHeader}>
@@ -353,6 +397,19 @@ const s = StyleSheet.create({
     paddingVertical: 16, gap: 10,
   },
   createBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Near Me Filter
+  filterRow: {
+    flexDirection: 'row', paddingHorizontal: 16, marginTop: 12, gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#111827', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#1e293b',
+  },
+  filterChipActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  filterChipText: { color: '#64748b', fontSize: 13, fontWeight: '600' },
+  filterChipTextActive: { color: '#fff' },
 
   // Cards
   card: {

@@ -244,3 +244,69 @@ export const getBlocks = async () => {
 export const reportUser = async (reportedUserId, reason) => {
   return apiRequest('/report', { method: 'POST', body: { reportedUserId, reason } });
 };
+
+// ── Ratings ─────────────────────────────────────────────────────────────────
+
+export const submitRating = async (ratedUserId, broadcastId, reliability, teamwork, skill) => {
+  return apiRequest('/ratings', { method: 'POST', body: { ratedUserId, broadcastId, reliability, teamwork, skill } });
+};
+
+export const getRatings = async (uid) => {
+  return apiRequest(`/ratings/${uid}`);
+};
+
+// ── Comments ────────────────────────────────────────────────────────────────
+
+export const addComment = async (broadcastId, text) => {
+  return apiRequest(`/broadcasts/${broadcastId}/comments`, { method: 'POST', body: { text } });
+};
+
+export const getComments = async (broadcastId) => {
+  return apiRequest(`/broadcasts/${broadcastId}/comments`);
+};
+
+// ── Game History ────────────────────────────────────────────────────────────
+
+export const getGameHistory = async () => {
+  return apiRequest('/game-history');
+};
+
+export const getUserStats = async (uid) => {
+  return apiRequest(`/user-stats/${uid}`);
+};
+
+// ── Notification Preferences ────────────────────────────────────────────────
+
+export const getNotificationPrefs = async () => {
+  return apiRequest('/notification-preferences');
+};
+
+export const updateNotificationPrefs = async (prefs) => {
+  return apiRequest('/notification-preferences', { method: 'PUT', body: prefs });
+};
+
+// ── Teams ───────────────────────────────────────────────────────────────────
+
+export const createTeam = async (name, color, description) => {
+  return apiRequest('/teams', { method: 'POST', body: { name, color, description } });
+};
+
+export const getMyTeams = async () => {
+  return apiRequest('/teams');
+};
+
+export const getTeam = async (id) => {
+  return apiRequest(`/teams/${id}`);
+};
+
+export const inviteToTeam = async (teamId, userId) => {
+  return apiRequest(`/teams/${teamId}/invite`, { method: 'POST', body: { userId } });
+};
+
+export const leaveTeam = async (teamId) => {
+  return apiRequest(`/teams/${teamId}/leave`, { method: 'POST' });
+};
+
+export const deleteTeam = async (teamId) => {
+  return apiRequest(`/teams/${teamId}`, { method: 'DELETE' });
+};

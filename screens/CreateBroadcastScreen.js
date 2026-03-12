@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import {
     ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-    ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+    ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { createBroadcast } from '../services/api';
 
@@ -45,7 +45,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
     if (!dateObj) return Alert.alert('Date is required', 'When is the game?');
     setSaving(true);
     try {
-      await createBroadcast({
+      const res = await createBroadcast({
         type: broadcastType,
         date: formatDate(dateObj),
         time: formatTime(timeObj),
@@ -56,7 +56,20 @@ export default function CreateBroadcastScreen({ navigation, route }) {
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Posted!', 'Your broadcast is live.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        {
+          text: 'Share',
+          onPress: async () => {
+            try {
+              const broadcastId = res?.broadcast?.id || res?.id || '';
+              await Share.share({
+                message: `Check out my SubHook broadcast! ${broadcastType === 'player' ? "I'm available to play" : "I need a sub"} on ${formatDate(dateObj)}${locationName ? ` at ${locationName}` : ''}. Open SubHook to respond!`,
+                url: `subhook://broadcast/${broadcastId}`,
+              });
+            } catch {}
+            navigation.goBack();
+          },
+        },
+        { text: 'Done', onPress: () => navigation.goBack() },
       ]);
     } catch (e) {
       Alert.alert('Error', e.message);

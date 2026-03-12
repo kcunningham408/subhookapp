@@ -19,8 +19,12 @@ import MessagesScreen from './screens/MessagesScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import PlayerProfileScreen from './screens/PlayerProfileScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import RatePlayerScreen from './screens/RatePlayerScreen';
 // RoleSelectScreen removed — single unified role
 import SearchScreen from './screens/SearchScreen';
+import GameHistoryScreen from './screens/GameHistoryScreen';
+import SettingsScreen from './screens/SettingsScreen';
+import TeamsScreen from './screens/TeamsScreen';
 
 import { getConversations, getStoredUser, registerPushToken } from './services/api';
 
@@ -209,6 +213,10 @@ export default function App() {
               <Stack.Screen name="BroadcastDetail" component={BroadcastDetailScreen} />
               <Stack.Screen name="Chat" component={ChatScreen} />
               <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} />
+              <Stack.Screen name="GameHistory" component={GameHistoryScreen} />
+              <Stack.Screen name="Settings" component={SettingsScreen} />
+              <Stack.Screen name="Teams" component={TeamsScreen} />
+              <Stack.Screen name="RatePlayer" component={RatePlayerScreen} />
             </>
           )}
         </Stack.Navigator>

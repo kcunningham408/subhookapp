@@ -6,12 +6,12 @@ import { useEffect, useState } from 'react';
 import {
     ActivityIndicator, Alert,
     Linking, Platform, RefreshControl, ScrollView,
-    StyleSheet, Text, TouchableOpacity, View
+    StyleSheet, Text, TextInput, TouchableOpacity, View
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import {
-    addToRoster, cancelBroadcast, closeBroadcast, confirmAttendance,
-    confirmBroadcast, getBroadcast, getOrCreateConversation, removeFromRoster,
+    addComment, addToRoster, cancelBroadcast, closeBroadcast, confirmAttendance,
+    confirmBroadcast, getBroadcast, getComments, getOrCreateConversation, removeFromRoster,
     respondToBroadcast, sendGameReminder,
 } from '../services/api';
 
@@ -24,6 +24,9 @@ export default function BroadcastDetailScreen({ navigation, route }) {
   const [mapCoords, setMapCoords] = useState(null);
   const [geocoding, setGeocoding] = useState(false);
   const [rosterLoading, setRosterLoading] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
 
   // Fetch broadcast if only ID was provided (deep link)
   useEffect(() => {
@@ -91,10 +94,38 @@ export default function BroadcastDetailScreen({ navigation, route }) {
 
   const refresh = async () => {
     try {
-      const res = await getBroadcast(broadcast.id);
-      setBroadcast(res.broadcast);
+      const [bRes, cRes] = await Promise.all([
+        getBroadcast(broadcast.id),
+        getComments(broadcast.id),
+      ]);
+      setBroadcast(bRes.broadcast);
+      setComments(cRes.comments || []);
     } catch (e) {
       console.warn('Refresh error', e);
+    }
+  };
+
+  // Load comments on mount
+  useEffect(() => {
+    if (broadcast?.id) {
+      getComments(broadcast.id).then(res => setComments(res.comments || [])).catch(() => {});
+    }
+  }, [broadcast?.id]);
+
+  const handlePostComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed || postingComment) return;
+    setPostingComment(true);
+    try {
+      await addComment(broadcast.id, trimmed);
+      setCommentText('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const res = await getComments(broadcast.id);
+      setComments(res.comments || []);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setPostingComment(false);
     }
   };
 
@@ -581,6 +612,66 @@ export default function BroadcastDetailScreen({ navigation, route }) {
           <Text style={s.messageCreatorText}>Message {broadcast.creatorName?.split(' ')[0]}</Text>
         </TouchableOpacity>
       )}
+
+      {/* Rate Players (after game is closed/expired, for non-owner roster members) */}
+      {!isOwner && isExpired && myRosterEntry && (
+        <TouchableOpacity
+          style={s.rateBtn}
+          onPress={() => navigation.navigate('RatePlayer', {
+            targetUid: broadcast.creatorId,
+            targetName: broadcast.creatorName || 'Player',
+            broadcastId: broadcast.id,
+          })}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="star" size={18} color="#f59e0b" />
+          <Text style={s.rateBtnText}>Rate Game Organizer</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Comments / Questions */}
+      <View style={s.commentsSection}>
+        <View style={s.sectionHeader}>
+          <Ionicons name="chatbox-outline" size={16} color="#94a3b8" />
+          <Text style={s.sectionTitle}>Comments ({comments.length})</Text>
+        </View>
+        {comments.map((c, i) => (
+          <View key={c.id || i} style={s.commentCard}>
+            <View style={s.commentAvatar}>
+              <Text style={s.commentAvatarText}>{(c.authorName || '?')[0].toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.commentName}>{c.authorName}</Text>
+              <Text style={s.commentBody}>{c.text}</Text>
+              <Text style={s.commentTime}>
+                {c.createdAt ? new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}
+              </Text>
+            </View>
+          </View>
+        ))}
+        {comments.length === 0 && (
+          <Text style={s.noComments}>No comments yet — ask a question or leave a note</Text>
+        )}
+        <View style={s.commentInputRow}>
+          <TextInput
+            style={s.commentInput}
+            placeholder="Add a comment..."
+            placeholderTextColor="#475569"
+            value={commentText}
+            onChangeText={setCommentText}
+            multiline
+          />
+          <TouchableOpacity
+            style={[s.commentSendBtn, commentText.trim() && s.commentSendBtnActive]}
+            onPress={handlePostComment}
+            disabled={postingComment || !commentText.trim()}
+          >
+            {postingComment ? <ActivityIndicator color="#fff" size="small" /> : (
+              <Ionicons name="send" size={18} color={commentText.trim() ? '#fff' : '#475569'} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -786,4 +877,41 @@ const s = StyleSheet.create({
     backgroundColor: '#111827', borderRadius: 12, borderWidth: 1, borderColor: '#1e293b',
   },
   messageCreatorText: { color: '#3b82f6', fontSize: 15, fontWeight: '700' },
+
+  // Rate Button
+  rateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 16, marginTop: 12, paddingVertical: 14,
+    backgroundColor: '#f59e0b15', borderRadius: 12, borderWidth: 1, borderColor: '#f59e0b30',
+  },
+  rateBtnText: { color: '#f59e0b', fontSize: 15, fontWeight: '700' },
+
+  // Comments
+  commentsSection: { marginHorizontal: 16, marginTop: 24, marginBottom: 16 },
+  commentCard: {
+    flexDirection: 'row', gap: 10, marginBottom: 10, padding: 12,
+    backgroundColor: '#111827', borderRadius: 12, borderWidth: 1, borderColor: '#1e293b',
+  },
+  commentAvatar: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: '#3b82f620',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  commentAvatarText: { color: '#3b82f6', fontSize: 14, fontWeight: '700' },
+  commentName: { fontSize: 13, fontWeight: '700', color: '#e2e8f0' },
+  commentBody: { fontSize: 14, color: '#94a3b8', marginTop: 2, lineHeight: 20 },
+  commentTime: { fontSize: 11, color: '#475569', marginTop: 4 },
+  noComments: { color: '#475569', fontSize: 13, marginBottom: 12 },
+  commentInputRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8,
+  },
+  commentInput: {
+    flex: 1, backgroundColor: '#111827', borderRadius: 12, paddingHorizontal: 14,
+    paddingVertical: 10, color: '#fff', fontSize: 14, maxHeight: 80,
+    borderWidth: 1, borderColor: '#1e293b',
+  },
+  commentSendBtn: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: '#1e293b',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  commentSendBtnActive: { backgroundColor: '#3b82f6' },
 });

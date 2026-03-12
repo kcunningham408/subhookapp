@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActionSheetIOS, Alert, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text,
+    ActionSheetIOS, Alert, AppState, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text,
     TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { blockUser, getMessages, reportUser, sendMessage } from '../services/api';
@@ -29,8 +29,20 @@ export default function ChatScreen({ navigation, route }) {
 
   useEffect(() => {
     load();
-    pollRef.current = setInterval(load, 5000);
-    return () => clearInterval(pollRef.current);
+    // Adaptive polling: 2s when app is active, 10s when backgrounded
+    const FAST_INTERVAL = 2000;
+    const SLOW_INTERVAL = 10000;
+    let interval = FAST_INTERVAL;
+    const startPolling = () => {
+      clearInterval(pollRef.current);
+      pollRef.current = setInterval(load, interval);
+    };
+    startPolling();
+    const sub = AppState.addEventListener('change', (state) => {
+      interval = state === 'active' ? FAST_INTERVAL : SLOW_INTERVAL;
+      startPolling();
+    });
+    return () => { clearInterval(pollRef.current); sub.remove(); };
   }, [load]);
 
   const send = async (override) => {

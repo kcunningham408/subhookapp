@@ -172,6 +172,31 @@ export default function ProfileScreen({ navigation, route }) {
 
       </LinearGradient>
 
+      {/* Quick Links */}
+      <View style={s.quickLinks}>
+        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('Settings', { user })} activeOpacity={0.7}>
+          <View style={[s.quickLinkIcon, { backgroundColor: '#3b82f620' }]}>
+            <Ionicons name="settings" size={20} color="#3b82f6" />
+          </View>
+          <Text style={s.quickLinkText}>Settings</Text>
+          <Ionicons name="chevron-forward" size={16} color="#334155" />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('GameHistory', { user })} activeOpacity={0.7}>
+          <View style={[s.quickLinkIcon, { backgroundColor: '#8b5cf620' }]}>
+            <Ionicons name="trophy" size={20} color="#8b5cf6" />
+          </View>
+          <Text style={s.quickLinkText}>Game History</Text>
+          <Ionicons name="chevron-forward" size={16} color="#334155" />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickLink} onPress={() => navigation.navigate('Teams', { user })} activeOpacity={0.7}>
+          <View style={[s.quickLinkIcon, { backgroundColor: '#f59e0b20' }]}>
+            <Ionicons name="shield" size={20} color="#f59e0b" />
+          </View>
+          <Text style={s.quickLinkText}>My Teams</Text>
+          <Ionicons name="chevron-forward" size={16} color="#334155" />
+        </TouchableOpacity>
+      </View>
+
       {/* Active Now Toggle */}
       <View style={s.card}>
         <View style={s.toggleRow}>
@@ -354,6 +379,16 @@ const s = StyleSheet.create({
   avatarLargeText: { color: '#3b82f6', fontSize: 32, fontWeight: '700' },
   name: { fontSize: 22, fontWeight: '800', color: '#fff' },
   phone: { fontSize: 14, color: '#64748b', marginTop: 4 },
+  quickLinks: { marginHorizontal: 16, marginBottom: 10, borderRadius: 14, overflow: 'hidden' },
+  quickLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#111827', padding: 14, borderWidth: 1, borderColor: '#1e293b',
+    borderBottomWidth: 0,
+  },
+  quickLinkIcon: {
+    width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+  },
+  quickLinkText: { flex: 1, fontSize: 15, fontWeight: '600', color: '#e2e8f0' },
   card: {
     backgroundColor: '#111827', borderRadius: 14, marginHorizontal: 16, padding: 18,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',

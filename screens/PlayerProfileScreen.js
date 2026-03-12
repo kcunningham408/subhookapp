@@ -6,7 +6,7 @@ import {
     ActivityIndicator,
     Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { blockUser, getOrCreateConversation, getProfile, notifyFreeAgents, reportUser } from '../services/api';
+import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, notifyFreeAgents, reportUser } from '../services/api';
 
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -14,12 +14,20 @@ export default function PlayerProfileScreen({ navigation, route }) {
   const { profileUid, user } = route.params;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState(null);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await getProfile(profileUid);
-        setProfile(res.profile);
+        const [profRes, ratRes, statRes] = await Promise.all([
+          getProfile(profileUid),
+          getRatings(profileUid).catch(() => ({})),
+          getUserStats(profileUid).catch(() => ({})),
+        ]);
+        setProfile(profRes.profile);
+        setRatings(ratRes);
+        setStats(statRes);
       } catch (e) {
         console.warn('Profile load error', e);
       } finally {
@@ -176,6 +184,54 @@ export default function PlayerProfileScreen({ navigation, route }) {
         </View>
       </View>
 
+      {/* Ratings */}
+      {ratings?.averages && (
+        <View style={s.ratingsSection}>
+          <Text style={s.sectionTitle}>
+            <Ionicons name="star" size={14} color="#f59e0b" />  Player Ratings
+          </Text>
+          <View style={s.ratingsRow}>
+            {[
+              { key: 'reliability', label: 'Reliability', icon: 'time-outline' },
+              { key: 'teamwork', label: 'Teamwork', icon: 'people-outline' },
+              { key: 'skill', label: 'Skill', icon: 'star-outline' },
+            ].map(r => (
+              <View key={r.key} style={s.ratingCard}>
+                <Ionicons name={r.icon} size={16} color="#f59e0b" />
+                <Text style={s.ratingValue}>
+                  {ratings.averages[r.key] ? ratings.averages[r.key].toFixed(1) : '—'}
+                </Text>
+                <Text style={s.ratingLabel}>{r.label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={s.ratingCount}>{ratings.totalRatings || 0} rating(s)</Text>
+        </View>
+      )}
+
+      {/* Game Stats */}
+      {stats?.totalGames > 0 && (
+        <View style={s.gameStatsSection}>
+          <Text style={s.sectionTitle}>
+            <Ionicons name="trophy" size={14} color="#8b5cf6" />  Game Stats
+          </Text>
+          <View style={s.gameStatsRow}>
+            <View style={s.gameStatCard}>
+              <Text style={s.gameStatValue}>{stats.totalGames}</Text>
+              <Text style={s.gameStatLabel}>Games</Text>
+            </View>
+            <View style={s.gameStatCard}>
+              <Text style={s.gameStatValue}>{stats.gamesCreated || 0}</Text>
+              <Text style={s.gameStatLabel}>Created</Text>
+            </View>
+            <View style={s.gameStatCard}>
+              <Text style={s.gameStatValue}>{stats.showUpRate ? `${Math.round(stats.showUpRate)}%` : '—'}</Text>
+              <Text style={s.gameStatLabel}>Show-up</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Positions */}
       {(profile.positions || []).length > 0 && (
         <View style={s.section}>
@@ -317,4 +373,25 @@ const s = StyleSheet.create({
   empty: { color: '#475569', fontSize: 16, fontWeight: '600', marginTop: 14 },
   backLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
   backLinkText: { color: '#3b82f6', fontSize: 15, fontWeight: '600' },
+
+  // Ratings
+  ratingsSection: { marginHorizontal: 20, marginTop: 20 },
+  ratingsRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  ratingCard: {
+    flex: 1, backgroundColor: '#111827', borderRadius: 12, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: '#1e293b',
+  },
+  ratingValue: { fontSize: 22, fontWeight: '800', color: '#f59e0b', marginTop: 6 },
+  ratingLabel: { fontSize: 11, color: '#64748b', marginTop: 2, fontWeight: '600' },
+  ratingCount: { fontSize: 12, color: '#475569', marginTop: 8 },
+
+  // Game Stats
+  gameStatsSection: { marginHorizontal: 20, marginTop: 20 },
+  gameStatsRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  gameStatCard: {
+    flex: 1, backgroundColor: '#111827', borderRadius: 12, padding: 14,
+    alignItems: 'center', borderWidth: 1, borderColor: '#1e293b',
+  },
+  gameStatValue: { fontSize: 22, fontWeight: '800', color: '#8b5cf6' },
+  gameStatLabel: { fontSize: 11, color: '#64748b', marginTop: 2, fontWeight: '600' },
 });
