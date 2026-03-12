@@ -15,33 +15,26 @@ export default function ChatScreen({ navigation, route }) {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
   const pollRef = useRef(null);
-
-  if (!user || !conversation) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#94a3b8', fontSize: 16 }}>Unable to load chat.</Text>
-      </View>
-    );
-  }
-
-  const otherId = conversation.participants?.find((p) => p !== user?.uid);
-  const otherName = conversation.participantNames?.[otherId] || 'Unknown';
-
   const [error, setError] = useState(null);
 
+  const convoId = conversation?.id;
+  const otherId = conversation?.participants?.find((p) => p !== user?.uid);
+  const otherName = conversation?.participantNames?.[otherId] || 'Unknown';
+
   const load = useCallback(async () => {
+    if (!convoId) return;
     try {
-      const res = await getMessages(conversation.id);
+      const res = await getMessages(convoId);
       setMessages(res.messages || []);
       setError(null);
     } catch (e) {
       if (messages.length === 0) setError('Could not load messages. Tap Retry.');
     }
-  }, [conversation.id]);
+  }, [convoId]);
 
   useEffect(() => {
+    if (!convoId) return;
     load();
-    // Adaptive polling: 2s when app is active, 10s when backgrounded
     const FAST_INTERVAL = 2000;
     const SLOW_INTERVAL = 10000;
     let interval = FAST_INTERVAL;
@@ -55,7 +48,15 @@ export default function ChatScreen({ navigation, route }) {
       startPolling();
     });
     return () => { clearInterval(pollRef.current); sub.remove(); };
-  }, [load]);
+  }, [load, convoId]);
+
+  if (!user || !conversation) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#94a3b8', fontSize: 16 }}>Unable to load chat.</Text>
+      </View>
+    );
+  }
 
   const send = async (override) => {
     const trimmed = (override || text).trim();

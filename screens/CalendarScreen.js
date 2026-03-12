@@ -103,10 +103,6 @@ export default function CalendarScreen({ navigation, route }) {
 
   useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
 
-  if (!user) return null;
-
-  const onRefresh = () => { setRefreshing(true); load(); };
-
   // Group all games by date with section headers
   const sections = useMemo(() => {
     const all = [
@@ -124,6 +120,10 @@ export default function CalendarScreen({ navigation, route }) {
       .sort((a, b) => (a === 'TBD' ? 1 : b === 'TBD' ? -1 : a.localeCompare(b)))
       .map((date) => ({ title: date, data: grouped[date] }));
   }, [created, accepted]);
+
+  if (!user) return null;
+
+  const onRefresh = () => { setRefreshing(true); load(); };
 
   const renderGame = (item, type) => {
     const sc = STATUS_CONFIG[item.status] || STATUS_CONFIG.open;
