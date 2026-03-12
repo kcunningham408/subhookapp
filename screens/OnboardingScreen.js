@@ -122,7 +122,14 @@ export default function OnboardingScreen({ navigation, route }) {
                 onToggle={(key) => toggleItem(key, positions, setPositions)}
                 size={SCREEN_W * 0.75}
               />
-              {positions.length > 0 && <Text style={s.chipCount}>{positions.length} selected</Text>}
+              {positions.length > 0 ? (
+                <View style={s.posCountRow}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text style={s.posCountText}>{positions.length} position{positions.length !== 1 ? 's' : ''} selected</Text>
+                </View>
+              ) : (
+                <Text style={s.posHint}>Tap positions on the field above</Text>
+              )}
             </View>
           )}
 
@@ -262,6 +269,9 @@ const s = StyleSheet.create({
   chipText: { color: '#94a3b8', fontSize: 14, fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
   chipCount: { fontSize: 12, color: '#3b82f6', width: '100%', marginTop: 4 },
+  posCountRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  posCountText: { fontSize: 14, color: '#10b981', fontWeight: '600' },
+  posHint: { fontSize: 13, color: '#475569', marginTop: 8, fontStyle: 'italic' },
 
   // Skill
   skillChip: {

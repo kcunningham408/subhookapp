@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
-    LayoutAnimation, Platform, RefreshControl, SectionList, StyleSheet, Text,
+    FlatList,
+    LayoutAnimation, Platform, RefreshControl, ScrollView, StyleSheet, Text,
     TouchableOpacity, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
@@ -21,37 +22,47 @@ const SPRING_CONFIG = {
   delete: { type: 'spring', property: 'opacity', springDamping: 0.7 },
 };
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Build 7-day strip starting from today
+const buildDayStrip = () => {
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    days.push({
+      key: `${d.getMonth() + 1}/${d.getDate()}`,
+      label: i === 0 ? 'Today' : DAY_NAMES[d.getDay()],
+      dateNum: d.getDate(),
+      month: MONTH_NAMES[d.getMonth()],
+    });
+  }
+  return days;
+};
+
 const addToCalendar = async (game) => {
   const { status } = await Calendar.requestCalendarPermissionsAsync();
   if (status !== 'granted') {
     Alert.alert('Permission Required', 'Please allow calendar access to add games.');
     return;
   }
-
-  // Get the default calendar (iCloud on iOS, Google on Android)
   const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
   const defaultCal = Platform.OS === 'ios'
     ? calendars.find(c => c.allowsModifications && c.source?.name === 'iCloud')
       || calendars.find(c => c.allowsModifications)
     : calendars.find(c => c.allowsModifications && c.isPrimary)
       || calendars.find(c => c.allowsModifications);
+  if (!defaultCal) { Alert.alert('No Calendar', 'No writable calendar found.'); return; }
 
-  if (!defaultCal) {
-    Alert.alert('No Calendar', 'No writable calendar found on this device.');
-    return;
-  }
-
-  // Parse date from format like "Saturday 3/15" and time like "6:30 PM"
   const now = new Date();
   let startDate = new Date();
-  const dateStr = game.date || '';
-  const match = dateStr.match(/(\d{1,2})\/(\d{1,2})/);
+  const match = (game.date || '').match(/(\d{1,2})\/(\d{1,2})/);
   if (match) {
     startDate.setMonth(parseInt(match[1]) - 1);
     startDate.setDate(parseInt(match[2]));
     if (startDate < now) startDate.setFullYear(startDate.getFullYear() + 1);
   }
-
   if (game.time) {
     const tm = game.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (tm) {
@@ -61,25 +72,19 @@ const addToCalendar = async (game) => {
       if (tm[3]?.toUpperCase() === 'AM' && h === 12) h = 0;
       startDate.setHours(h, m, 0, 0);
     }
-  } else {
-    startDate.setHours(18, 0, 0, 0); // default 6 PM
-  }
+  } else { startDate.setHours(18, 0, 0, 0); }
 
-  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2hr game
-
+  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
   try {
     await Calendar.createEventAsync(defaultCal.id, {
       title: `SubHook: ${game.locationName || 'Softball Game'}`,
-      startDate,
-      endDate,
+      startDate, endDate,
       location: game.locationAddress || game.locationName || '',
       notes: `Positions: ${normalizePositions(game.positions).join(', ')}\n${game.notes || ''}`.trim(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     Alert.alert('Added!', 'Game added to your calendar.');
-  } catch (e) {
-    Alert.alert('Error', 'Could not add to calendar.');
-  }
+  } catch { Alert.alert('Error', 'Could not add to calendar.'); }
 };
 
 const STATUS_CONFIG = {
@@ -89,13 +94,15 @@ const STATUS_CONFIG = {
   closed: { color: '#ef4444', icon: 'close-circle', label: 'CLOSED' },
 };
 
-export default function CalendarScreen({ navigation, route }) {
+export default function MyGamesScreen({ navigation, route }) {
   const { user } = route.params;
   const [created, setCreated] = useState([]);
   const [accepted, setAccepted] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedDay, setSelectedDay] = useState('all');
+  const dayStrip = useMemo(() => buildDayStrip(), []);
 
   // Skeleton shimmer
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -118,69 +125,77 @@ export default function CalendarScreen({ navigation, route }) {
       LayoutAnimation.configureNext(SPRING_CONFIG);
       setCreated(res.created || []);
       setAccepted(res.accepted || []);
-    } catch (e) {
+    } catch {
       setError('Could not load your games. Pull to refresh or tap Retry.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    } finally { setLoading(false); setRefreshing(false); }
   }, []);
 
   useFocusEffect(useCallback(() => { if (user) load(); }, [load, user]));
 
-  // Group all games by date with section headers
-  const sections = useMemo(() => {
-    const all = [
+  // Combine + filter by selected day
+  const allGames = useMemo(() => {
+    return [
       ...created.map((g) => ({ ...g, _type: 'created' })),
       ...accepted.map((g) => ({ ...g, _type: 'accepted' })),
     ];
-    const grouped = {};
-    all.forEach((g) => {
-      const key = g.date || 'TBD';
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(g);
-    });
-    // Sort sections: TBD last, everything else alphabetically
-    return Object.keys(grouped)
-      .sort((a, b) => (a === 'TBD' ? 1 : b === 'TBD' ? -1 : a.localeCompare(b)))
-      .map((date) => ({ title: date, data: grouped[date] }));
   }, [created, accepted]);
 
-  if (!user) return null;
+  const filteredGames = useMemo(() => {
+    if (selectedDay === 'all') return allGames;
+    return allGames.filter((g) => {
+      const dateStr = g.date || '';
+      return dateStr.includes(selectedDay);
+    });
+  }, [allGames, selectedDay]);
 
+  // Count games per day for badges
+  const countForDay = useCallback((dayKey) => {
+    return allGames.filter(g => (g.date || '').includes(dayKey)).length;
+  }, [allGames]);
+
+  if (!user) return null;
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  const renderGame = (item, type) => {
+  const renderGame = ({ item }) => {
     const sc = STATUS_CONFIG[item.status] || STATUS_CONFIG.open;
+    const isCreated = item._type === 'created';
     return (
       <TouchableOpacity
-        key={item.id}
         style={s.card}
         onPress={() => { Haptics.selectionAsync(); navigation.navigate('BroadcastDetail', { broadcast: item, user }); }}
         activeOpacity={0.7}
       >
         <View style={s.cardHeader}>
-          <View style={s.dateWrap}>
-            <Ionicons name="calendar" size={16} color="#3b82f6" />
-            <Text style={s.dateText}>{item.date || 'TBD'}</Text>
+          <View style={s.cardHeaderLeft}>
+            <Ionicons name={isCreated ? 'megaphone' : 'checkmark-done'} size={16} color={isCreated ? '#8b5cf6' : '#10b981'} />
+            <Text style={s.creatorText}>
+              {isCreated ? 'You posted' : (item.creatorName || 'Unknown')}
+            </Text>
           </View>
           <View style={[s.statusPill, { backgroundColor: sc.color + '20' }]}>
             <Ionicons name={sc.icon} size={12} color={sc.color} />
-            <Text style={[s.statusText, { color: sc.color }]}>{sc.label}</Text>
+            <Text style={[s.statusLabel, { color: sc.color }]}>{sc.label}</Text>
           </View>
         </View>
 
-        {item.time ? (
-          <View style={s.detailRow}>
-            <Ionicons name="time-outline" size={14} color="#64748b" />
-            <Text style={s.detailText}>{item.time}</Text>
+        {/* Date + Time */}
+        <View style={s.metaRow}>
+          <View style={s.metaItem}>
+            <Ionicons name="calendar-outline" size={14} color="#64748b" />
+            <Text style={s.metaText}>{item.date || 'TBD'}</Text>
           </View>
-        ) : null}
+          {item.time ? (
+            <View style={s.metaItem}>
+              <Ionicons name="time-outline" size={14} color="#64748b" />
+              <Text style={s.metaText}>{item.time}</Text>
+            </View>
+          ) : null}
+        </View>
 
         {item.locationName ? (
-          <View style={s.detailRow}>
+          <View style={s.metaRow}>
             <Ionicons name="location-outline" size={14} color="#64748b" />
-            <Text style={s.detailText}>{item.locationName}</Text>
+            <Text style={s.metaText}>{item.locationName}</Text>
           </View>
         ) : null}
 
@@ -195,12 +210,6 @@ export default function CalendarScreen({ navigation, route }) {
         )}
 
         <View style={s.cardFooter}>
-          <View style={s.typePill}>
-            <Ionicons name={type === 'created' ? 'megaphone-outline' : 'checkmark-done'} size={13} color={type === 'created' ? '#8b5cf6' : '#10b981'} />
-            <Text style={[s.typeText, { color: type === 'created' ? '#8b5cf6' : '#10b981' }]}>
-              {type === 'created' ? 'You posted' : 'You responded'}
-            </Text>
-          </View>
           <TouchableOpacity
             style={s.calBtn}
             onPress={(e) => { e.stopPropagation(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); addToCalendar(item); }}
@@ -219,8 +228,8 @@ export default function CalendarScreen({ navigation, route }) {
     return (
       <View style={s.container}>
         <LinearGradient colors={['#1e293b', '#0a0e1a']} style={s.header}>
-          <Ionicons name="calendar" size={24} color="#3b82f6" />
-          <Text style={s.title}>Your Games</Text>
+          <Ionicons name="football" size={24} color="#3b82f6" />
+          <Text style={s.title}>My Games</Text>
         </LinearGradient>
         <View style={{ paddingTop: 8 }}>
           {[1, 2, 3].map(i => (
@@ -244,38 +253,58 @@ export default function CalendarScreen({ navigation, route }) {
   return (
     <View style={s.container}>
       <LinearGradient colors={['#1e293b', '#0a0e1a']} style={s.header}>
-        <Ionicons name="calendar" size={24} color="#3b82f6" />
-        <Text style={s.title}>Your Games</Text>
+        <Ionicons name="football" size={24} color="#3b82f6" />
+        <Text style={s.title}>My Games</Text>
         <View style={s.countBadge}>
-          <Text style={s.countText}>{created.length + accepted.length}</Text>
+          <Text style={s.countText}>{allGames.length}</Text>
         </View>
       </LinearGradient>
 
+      {/* Day strip */}
+      <View style={s.dayStripWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayStrip}>
+          <TouchableOpacity
+            style={[s.dayChip, selectedDay === 'all' && s.dayChipActive]}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); LayoutAnimation.configureNext(SPRING_CONFIG); setSelectedDay('all'); }}
+          >
+            <Text style={[s.dayLabel, selectedDay === 'all' && s.dayLabelActive]}>All</Text>
+            <Text style={[s.dayCount, selectedDay === 'all' && s.dayCountActive]}>{allGames.length}</Text>
+          </TouchableOpacity>
+          {dayStrip.map((d) => {
+            const ct = countForDay(d.key);
+            const active = selectedDay === d.key;
+            return (
+              <TouchableOpacity
+                key={d.key}
+                style={[s.dayChip, active && s.dayChipActive]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); LayoutAnimation.configureNext(SPRING_CONFIG); setSelectedDay(d.key); }}
+              >
+                <Text style={[s.dayLabel, active && s.dayLabelActive]}>{d.label}</Text>
+                <Text style={[s.dayNum, active && s.dayNumActive]}>{d.dateNum}</Text>
+                {ct > 0 && <View style={[s.dayDot, active && s.dayDotActive]}><Text style={s.dayDotText}>{ct}</Text></View>}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       <ErrorBanner message={error} onRetry={load} onDismiss={() => setError(null)} />
 
-      <SectionList
-        sections={sections}
+      <FlatList
+        data={filteredGames}
         keyExtractor={(item) => item.id}
-        renderSectionHeader={({ section }) => (
-          <View style={s.dateHeader}>
-            <Ionicons name="calendar-outline" size={14} color="#3b82f6" />
-            <Text style={s.dateHeaderText}>{section.title}</Text>
-            <View style={s.dateHeaderBadge}>
-              <Text style={s.dateHeaderCount}>{section.data.length}</Text>
-            </View>
-          </View>
-        )}
-        renderItem={({ item }) => renderGame(item, item._type)}
+        renderItem={renderGame}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3b82f6" />}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 30, paddingTop: 8 }}
         ListEmptyComponent={
           <View style={s.emptyWrap}>
-            <Ionicons name="calendar-outline" size={48} color="#1e293b" />
-            <Text style={s.empty}>No upcoming games</Text>
-            <Text style={s.emptySub}>Create or respond to a broadcast to get started</Text>
+            <Ionicons name="football-outline" size={48} color="#1e293b" />
+            <Text style={s.empty}>
+              {selectedDay === 'all' ? 'No games yet' : 'No games this day'}
+            </Text>
+            <Text style={s.emptySub}>Create or respond to a broadcast to see your games here</Text>
           </View>
         }
-        stickySectionHeadersEnabled={false}
       />
     </View>
   );
@@ -283,7 +312,6 @@ export default function CalendarScreen({ navigation, route }) {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0e1a' },
-  center: { flex: 1, backgroundColor: '#0a0e1a', justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16,
@@ -293,20 +321,33 @@ const s = StyleSheet.create({
     backgroundColor: '#3b82f620', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
   },
   countText: { color: '#3b82f6', fontSize: 13, fontWeight: '700' },
-  dateHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 20, paddingVertical: 12, marginTop: 8,
+
+  // Day strip
+  dayStripWrap: {
+    borderBottomWidth: 1, borderBottomColor: '#1e293b',
     backgroundColor: '#0a0e1a',
   },
-  dateHeaderText: { fontSize: 15, fontWeight: '700', color: '#e2e8f0', flex: 1 },
-  dateHeaderBadge: {
-    backgroundColor: '#3b82f620', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+  dayStrip: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  dayChip: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12,
+    backgroundColor: '#111827', borderWidth: 1, borderColor: '#1e293b',
+    minWidth: 52,
   },
-  dateHeaderCount: { color: '#3b82f6', fontSize: 12, fontWeight: '700' },
-  sectionTitle: {
-    fontSize: 14, fontWeight: '700', color: '#94a3b8', paddingHorizontal: 20,
-    marginBottom: 10, marginTop: 16,
+  dayChipActive: { backgroundColor: '#3b82f6', borderColor: '#3b82f6' },
+  dayLabel: { fontSize: 11, fontWeight: '600', color: '#64748b', textTransform: 'uppercase' },
+  dayLabelActive: { color: '#fff' },
+  dayNum: { fontSize: 18, fontWeight: '800', color: '#94a3b8', marginTop: 2 },
+  dayNumActive: { color: '#fff' },
+  dayCount: { fontSize: 12, fontWeight: '700', color: '#64748b', marginTop: 2 },
+  dayCountActive: { color: '#fff' },
+  dayDot: {
+    backgroundColor: '#3b82f620', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, marginTop: 4,
   },
+  dayDotActive: { backgroundColor: '#ffffff30' },
+  dayDotText: { fontSize: 10, fontWeight: '700', color: '#3b82f6' },
+
+  // Cards
   card: {
     backgroundColor: '#111827', borderRadius: 14, marginHorizontal: 16, padding: 16,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',
@@ -314,21 +355,20 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  dateWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dateText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  creatorText: { fontSize: 15, fontWeight: '700', color: '#e2e8f0' },
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  detailText: { fontSize: 14, color: '#94a3b8' },
+  statusLabel: { fontSize: 11, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  metaText: { fontSize: 14, color: '#94a3b8' },
   posRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   posPill: { backgroundColor: '#3b82f615', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   posPillText: { fontSize: 12, color: '#3b82f6', fontWeight: '600' },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#1e293b' },
-  typePill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  typeText: { fontSize: 12, fontWeight: '600' },
   calBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#3b82f615', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   calBtnText: { fontSize: 11, fontWeight: '700', color: '#3b82f6' },
   emptyWrap: { alignItems: 'center', marginTop: 80 },

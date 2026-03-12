@@ -5,12 +5,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Animated, Dimensions, FlatList, LayoutAnimation, Platform, RefreshControl,
+    ActivityIndicator, Animated, Dimensions, FlatList, LayoutAnimation, Platform, RefreshControl,
     ScrollView, StyleSheet, Text, TouchableOpacity, UIManager, View,
 } from 'react-native';
 import ErrorBanner from '../components/ErrorBanner';
 import { normalizePosition } from '../components/FieldPositionPicker';
-import { getActiveNow, getBroadcasts, setActiveNow } from '../services/api';
+import { getActiveNow, getBroadcasts, respondToBroadcast, setActiveNow } from '../services/api';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -88,6 +88,7 @@ export default function DashboardScreen({ navigation, route }) {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('subs');
   const [filterTonight, setFilterTonight] = useState(false);
+  const [quickResponded, setQuickResponded] = useState({});
 
   // Animations
   const fabScale = useRef(new Animated.Value(1)).current;
@@ -160,6 +161,17 @@ export default function DashboardScreen({ navigation, route }) {
     setNearMeOnly(!nearMeOnly);
   };
 
+  const handleQuickRespond = async (broadcastId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setQuickResponded(prev => ({ ...prev, [broadcastId]: 'loading' }));
+    try {
+      await respondToBroadcast(broadcastId, 'accept');
+      setQuickResponded(prev => ({ ...prev, [broadcastId]: 'done' }));
+    } catch {
+      setQuickResponded(prev => ({ ...prev, [broadcastId]: null }));
+    }
+  };
+
   // Haversine distance in miles
   const getDistance = (lat1, lon1, lat2, lon2) => {
     const R = 3959;
@@ -226,6 +238,7 @@ export default function DashboardScreen({ navigation, route }) {
     const isMine = item.creatorId === user?.uid;
     const accent = item.type === 'player' ? '#8b5cf6' : '#3b82f6';
     const responses = (item.responses || []).length;
+    const alreadyResponded = (item.responses || []).some(r => r.userId === user?.uid);
 
     return (
       <TouchableOpacity
@@ -260,8 +273,16 @@ export default function DashboardScreen({ navigation, route }) {
             </View>
           </View>
 
-          {/* Creator name */}
-          <Text style={s.cardCreator}>{isMine ? 'You' : (item.creatorName || 'Unknown')}</Text>
+          {/* Creator name + rating */}
+          <View style={s.cardCreatorRow}>
+            <Text style={s.cardCreator}>{isMine ? 'You' : (item.creatorName || 'Unknown')}</Text>
+            {item.creatorRating > 0 && (
+              <View style={s.cardRatingBadge}>
+                <Ionicons name="star" size={10} color="#f59e0b" />
+                <Text style={s.cardRatingText}>{item.creatorRating}</Text>
+              </View>
+            )}
+          </View>
 
           {/* Date + Location row */}
           <View style={s.cardMetaWrap}>
@@ -296,6 +317,29 @@ export default function DashboardScreen({ navigation, route }) {
               </View>
             )}
           </View>
+
+          {/* Quick respond: "I'm in" for non-owned open broadcasts */}
+          {!isMine && item.status === 'open' && !alreadyResponded && !quickResponded[item.id] && (
+            <TouchableOpacity
+              style={s.quickRespondBtn}
+              onPress={(e) => { e.stopPropagation?.(); handleQuickRespond(item.id); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="hand-right" size={13} color="#10b981" />
+              <Text style={s.quickRespondText}>I'm In</Text>
+            </TouchableOpacity>
+          )}
+          {quickResponded[item.id] === 'loading' && (
+            <View style={s.quickRespondBtn}>
+              <ActivityIndicator size="small" color="#10b981" />
+            </View>
+          )}
+          {quickResponded[item.id] === 'done' && (
+            <View style={[s.quickRespondBtn, { backgroundColor: '#10b98120', borderColor: '#10b98140' }]}>
+              <Ionicons name="checkmark-circle" size={13} color="#10b981" />
+              <Text style={[s.quickRespondText, { color: '#10b981' }]}>Responded!</Text>
+            </View>
+          )}
         </View>
         <Ionicons name="chevron-forward" size={16} color="#334155" style={s.cardChevron} />
       </TouchableOpacity>
@@ -326,10 +370,10 @@ export default function DashboardScreen({ navigation, route }) {
             </View>
             <View style={s.headerActions}>
               <TouchableOpacity
-                onPress={() => navigation.navigate('Calendar')}
+                onPress={() => navigation.navigate('My Games')}
                 style={s.headerBtn}
               >
-                <Ionicons name="calendar-outline" size={20} color="#94a3b8" />
+                <Ionicons name="football-outline" size={20} color="#94a3b8" />
               </TouchableOpacity>
             </View>
           </View>
@@ -598,7 +642,10 @@ const s = StyleSheet.create({
   statusDot: { width: 5, height: 5, borderRadius: 3 },
   statusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
   cardTime: { fontSize: 11, color: '#475569' },
+  cardCreatorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardCreator: { fontSize: 15, fontWeight: '700', color: '#e2e8f0' },
+  cardRatingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#f59e0b15', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
+  cardRatingText: { fontSize: 11, fontWeight: '700', color: '#f59e0b' },
   cardMetaWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   cardMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardMeta: { fontSize: 12, color: '#64748b', maxWidth: 140 },
@@ -609,6 +656,12 @@ const s = StyleSheet.create({
   posMore: { fontSize: 11, color: '#64748b', alignSelf: 'center' },
   responseBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#1e293b', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
   responseText: { fontSize: 11, color: '#94a3b8', fontWeight: '700' },
+  quickRespondBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#10b98110', borderRadius: 10, paddingVertical: 8, marginTop: 6,
+    borderWidth: 1, borderColor: '#10b98125',
+  },
+  quickRespondText: { fontSize: 13, fontWeight: '700', color: '#10b981' },
 
   // Empty
   emptyState: { alignItems: 'center', marginTop: 50, gap: 8, paddingHorizontal: 40 },

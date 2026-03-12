@@ -12,7 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import ErrorBoundary from './components/ErrorBoundary';
 import BroadcastDetailScreen from './screens/BroadcastDetailScreen';
-import CalendarScreen from './screens/CalendarScreen';
+import MyGamesScreen from './screens/CalendarScreen';
 import ChatScreen from './screens/ChatScreen';
 import CreateBroadcastScreen from './screens/CreateBroadcastScreen';
 import DashboardScreen from './screens/DashboardScreen';
@@ -58,7 +58,7 @@ const TAB_ICONS = {
   Map: { focused: 'map', unfocused: 'map-outline' },
   Search: { focused: 'search', unfocused: 'search-outline' },
   Messages: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
-  Calendar: { focused: 'calendar', unfocused: 'calendar-outline' },
+  'My Games': { focused: 'football', unfocused: 'football-outline' },
   Profile: { focused: 'person', unfocused: 'person-outline' },
 };
 
@@ -124,8 +124,8 @@ function MainTabs({ user, setUser }) {
       <Tab.Screen name="Messages">
         {(props) => <MessagesScreen {...props} route={{ ...props.route, params: { user } }} />}
       </Tab.Screen>
-      <Tab.Screen name="Calendar">
-        {(props) => <CalendarScreen {...props} route={{ ...props.route, params: { user } }} />}
+      <Tab.Screen name="My Games">
+        {(props) => <MyGamesScreen {...props} route={{ ...props.route, params: { user } }} />}
       </Tab.Screen>
       <Tab.Screen name="Profile">
         {(props) => <ProfileScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}

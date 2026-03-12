@@ -25,19 +25,32 @@ const formatTime = (d) => {
   return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-export default function CreateBroadcastScreen({ navigation, route }) {
-  const { user } = route.params;
+const TIME_PRESETS = [
+  { label: 'Morning', value: 'Morning', icon: 'sunny-outline' },
+  { label: 'Afternoon', value: 'Afternoon', icon: 'partly-sunny-outline' },
+  { label: '5 PM or Later', value: '5 PM or Later', icon: 'moon-outline' },
+  { label: 'Evening', value: 'Evening', icon: 'cloudy-night-outline' },
+  { label: 'Anytime', value: 'Anytime', icon: 'time-outline' },
+];
 
-  const [broadcastType, setBroadcastType] = useState('manager'); // 'manager' = sub needed, 'player' = available
+export default function CreateBroadcastScreen({ navigation, route }) {
+  const { user, prefill } = route.params;
+
+  const [broadcastType, setBroadcastType] = useState(prefill?.type || 'manager');
   const [dateObj, setDateObj] = useState(null);
   const [timeObj, setTimeObj] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [positions, setPositions] = useState([]);
-  const [locationName, setLocationName] = useState('');
-  const [locationAddress, setLocationAddress] = useState('');
-  const [locationCoords, setLocationCoords] = useState(null);
-  const [notes, setNotes] = useState('');
+  const [timePreset, setTimePreset] = useState(null);
+  const [positions, setPositions] = useState(prefill?.positions || []);
+  const [locationName, setLocationName] = useState(prefill?.locationName || '');
+  const [locationAddress, setLocationAddress] = useState(prefill?.locationAddress || '');
+  const [locationCoords, setLocationCoords] = useState(
+    prefill?.latitude && prefill?.longitude
+    ? { latitude: prefill.latitude, longitude: prefill.longitude }
+    : null
+  );
+  const [notes, setNotes] = useState(prefill?.notes || '');
   const [saving, setSaving] = useState(false);
 
   // Submit button animation
@@ -54,14 +67,24 @@ export default function CreateBroadcastScreen({ navigation, route }) {
     setPositions(positions.includes(p) ? positions.filter((x) => x !== p) : [...positions, p]);
   };
 
+  const switchType = (type) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBroadcastType(type);
+    // Reset time state when switching types
+    setTimeObj(null);
+    setTimePreset(null);
+    setShowTimePicker(false);
+  };
+
   const submit = async () => {
     if (!dateObj) return Alert.alert('Date is required', 'When is the game?');
     setSaving(true);
+    const timeValue = broadcastType === 'player' ? (timePreset || '') : formatTime(timeObj);
     try {
       const res = await createBroadcast({
         type: broadcastType,
         date: formatDate(dateObj),
-        time: formatTime(timeObj),
+        time: timeValue,
         positions,
         locationName: locationName.trim(),
         locationAddress: locationAddress.trim(),
@@ -115,14 +138,14 @@ export default function CreateBroadcastScreen({ navigation, route }) {
         <View style={s.chips}>
           <TouchableOpacity
             style={[s.chip, broadcastType === 'manager' && { backgroundColor: '#3b82f6', borderColor: '#3b82f6' }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBroadcastType('manager'); }}
+            onPress={() => switchType('manager')}
           >
             <Ionicons name="megaphone" size={14} color={broadcastType === 'manager' ? '#fff' : '#94a3b8'} style={{ marginRight: 4 }} />
             <Text style={[s.chipText, broadcastType === 'manager' && s.chipTextActive]}>Sub Needed</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[s.chip, broadcastType === 'player' && { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }]}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setBroadcastType('player'); }}
+            onPress={() => switchType('player')}
           >
             <Ionicons name="hand-right" size={14} color={broadcastType === 'player' ? '#fff' : '#94a3b8'} style={{ marginRight: 4 }} />
             <Text style={[s.chipText, broadcastType === 'player' && s.chipTextActive]}>I'm Available</Text>
@@ -145,16 +168,45 @@ export default function CreateBroadcastScreen({ navigation, route }) {
           <View style={{ width: 12 }} />
           <View style={{ flex: 1 }}>
             <Text style={s.label}>
-              <Ionicons name="time" size={12} color="#94a3b8" />  Time
+              <Ionicons name="time" size={12} color="#94a3b8" />  Time {broadcastType === 'manager' ? '' : '(flexible)'}
             </Text>
-            <TouchableOpacity style={s.pickerBtn} onPress={() => setShowTimePicker(true)}>
-              <Ionicons name="time-outline" size={18} color={timeObj ? '#3b82f6' : '#475569'} />
-              <Text style={[s.pickerText, timeObj && s.pickerTextActive]}>
-                {timeObj ? formatTime(timeObj) : 'Select time'}
-              </Text>
-            </TouchableOpacity>
+            {broadcastType === 'manager' ? (
+              <TouchableOpacity style={s.pickerBtn} onPress={() => setShowTimePicker(true)}>
+                <Ionicons name="time-outline" size={18} color={timeObj ? '#3b82f6' : '#475569'} />
+                <Text style={[s.pickerText, timeObj && s.pickerTextActive]}>
+                  {timeObj ? formatTime(timeObj) : 'Exact time'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={s.pickerBtn} onPress={() => setShowTimePicker(!showTimePicker)}>
+                <Ionicons name="time-outline" size={18} color={timePreset ? '#8b5cf6' : '#475569'} />
+                <Text style={[s.pickerText, timePreset && { color: '#fff' }]} numberOfLines={1}>
+                  {timePreset || 'Select window'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
+
+        {/* Time presets for available players */}
+        {broadcastType === 'player' && showTimePicker && (
+          <View style={s.presetWrap}>
+            {TIME_PRESETS.map((p) => (
+              <TouchableOpacity
+                key={p.value}
+                style={[s.presetChip, timePreset === p.value && { backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setTimePreset(timePreset === p.value ? null : p.value);
+                  setShowTimePicker(false);
+                }}
+              >
+                <Ionicons name={p.icon} size={14} color={timePreset === p.value ? '#fff' : '#94a3b8'} />
+                <Text style={[s.presetText, timePreset === p.value && { color: '#fff', fontWeight: '600' }]}>{p.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {showDatePicker && (
           <View style={s.pickerWrap}>
@@ -177,7 +229,7 @@ export default function CreateBroadcastScreen({ navigation, route }) {
           </View>
         )}
 
-        {showTimePicker && (
+        {broadcastType === 'manager' && showTimePicker && (
           <View style={s.pickerWrap}>
             <DateTimePicker
               value={timeObj || new Date()}
@@ -316,4 +368,14 @@ const s = StyleSheet.create({
   },
   pickerDone: { alignItems: 'center', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1e293b' },
   pickerDoneText: { color: '#3b82f6', fontSize: 16, fontWeight: '700' },
+  presetWrap: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    paddingHorizontal: 20, marginTop: 10,
+  },
+  presetChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#111827', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9,
+    borderWidth: 1, borderColor: '#1e293b',
+  },
+  presetText: { color: '#94a3b8', fontSize: 13, fontWeight: '500' },
 });
