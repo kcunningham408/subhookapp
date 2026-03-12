@@ -212,7 +212,7 @@ export default function DashboardScreen({ navigation, route }) {
                 </View>
                 <Text style={s.activeCardName} numberOfLines={1}>{item.name?.split(' ')[0]}</Text>
                 <Text style={s.activeCardRole} numberOfLines={1}>
-                  {(item.positions || []).slice(0, 2).join(', ') || item.role}
+                  {(item.positions || []).slice(0, 2).join(', ') || 'Player'}
                 </Text>
               </TouchableOpacity>
             )}

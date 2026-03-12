@@ -354,11 +354,6 @@ const s = StyleSheet.create({
   avatarLargeText: { color: '#3b82f6', fontSize: 32, fontWeight: '700' },
   name: { fontSize: 22, fontWeight: '800', color: '#fff' },
   phone: { fontSize: 14, color: '#64748b', marginTop: 4 },
-  rolePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#3b82f620', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, marginTop: 10,
-  },
-  roleText: { color: '#3b82f6', fontSize: 13, fontWeight: '600' },
   card: {
     backgroundColor: '#111827', borderRadius: 14, marginHorizontal: 16, padding: 18,
     marginBottom: 10, borderWidth: 1, borderColor: '#1e293b',

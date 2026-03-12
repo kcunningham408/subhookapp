@@ -13,6 +13,7 @@ import CalendarScreen from './screens/CalendarScreen';
 import ChatScreen from './screens/ChatScreen';
 import CreateBroadcastScreen from './screens/CreateBroadcastScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import HeatMapScreen from './screens/HeatMapScreen';
 import LoginScreen from './screens/LoginScreen';
 import MessagesScreen from './screens/MessagesScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
@@ -37,6 +38,7 @@ const navigationRef = createNavigationContainerRef();
 
 const TAB_ICONS = {
   Dashboard: { focused: 'home', unfocused: 'home-outline' },
+  Map: { focused: 'map', unfocused: 'map-outline' },
   Search: { focused: 'search', unfocused: 'search-outline' },
   Messages: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
   Calendar: { focused: 'calendar', unfocused: 'calendar-outline' },
@@ -95,6 +97,9 @@ function MainTabs({ user, setUser }) {
     >
       <Tab.Screen name="Dashboard">
         {(props) => <DashboardScreen {...props} route={{ ...props.route, params: { user, setUser } }} />}
+      </Tab.Screen>
+      <Tab.Screen name="Map">
+        {(props) => <HeatMapScreen {...props} route={{ ...props.route, params: { user } }} />}
       </Tab.Screen>
       <Tab.Screen name="Search">
         {(props) => <SearchScreen {...props} route={{ ...props.route, params: { user } }} />}
