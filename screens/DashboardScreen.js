@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
     ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text,
     TouchableOpacity, View,
@@ -19,6 +19,7 @@ export default function DashboardScreen({ navigation, route }) {
   const [isActive, setIsActive] = useState(user?.activeNow || false);
   const [nearMeOnly, setNearMeOnly] = useState(false);
   const [myLocation, setMyLocation] = useState(null);
+  const geocodeCache = useRef({});
 
   const load = useCallback(async () => {
     try {
@@ -57,6 +58,17 @@ export default function DashboardScreen({ navigation, route }) {
       if (status !== 'granted') return;
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setMyLocation(loc.coords);
+      // Geocode broadcast addresses in background
+      for (const b of feed) {
+        const addr = b.locationAddress || b.locationName;
+        if (!addr || geocodeCache.current[b.id]) continue;
+        try {
+          const results = await Location.geocodeAsync(addr);
+          if (results.length > 0) {
+            geocodeCache.current[b.id] = { lat: results[0].latitude, lng: results[0].longitude };
+          }
+        } catch {}
+      }
     }
     setNearMeOnly(!nearMeOnly);
   };
@@ -73,7 +85,11 @@ export default function DashboardScreen({ navigation, route }) {
   const radiusMiles = parseInt(user?.travelRadius) || 25;
   const filteredFeed = nearMeOnly && myLocation
     ? feed.filter(b => {
-        if (b.lat && b.lng) return getDistance(myLocation.latitude, myLocation.longitude, b.lat, b.lng) <= radiusMiles;
+        // Check location object from server, then geocode cache
+        const coords = b.location || geocodeCache.current[b.id];
+        if (coords && coords.lat && coords.lng) {
+          return getDistance(myLocation.latitude, myLocation.longitude, coords.lat, coords.lng) <= radiusMiles;
+        }
         return true; // keep broadcasts without coords
       })
     : feed;

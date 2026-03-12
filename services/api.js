@@ -1,11 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const API_URL = 'https://subhook-server.onrender.com';
 const TOKEN_KEY = 'subhook_token';
 const USER_KEY = 'subhook_user';
 
+const getToken = async () => {
+  try {
+    return await SecureStore.getItemAsync(TOKEN_KEY);
+  } catch {
+    // Fallback to AsyncStorage for migration from old installs
+    return AsyncStorage.getItem(TOKEN_KEY);
+  }
+};
+
+const setToken = async (token) => {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  // Clean up old AsyncStorage token if it exists
+  AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+};
+
+const deleteToken = async () => {
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+};
+
 const apiRequest = async (path, options = {}) => {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const token = await getToken();
   const res = await fetch(`${API_URL}${path}`, {
     method: options.method || 'GET',
     headers: {
@@ -31,7 +52,7 @@ export const register = async (phone, password, name) => {
     method: 'POST',
     body: { phone, password, name },
   });
-  await AsyncStorage.setItem(TOKEN_KEY, data.token);
+  await setToken(data.token);
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
   return data;
 };
@@ -41,20 +62,20 @@ export const login = async (phone, password) => {
     method: 'POST',
     body: { phone, password },
   });
-  await AsyncStorage.setItem(TOKEN_KEY, data.token);
+  await setToken(data.token);
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
   return data;
 };
 
 export const getStoredUser = async () => {
   try {
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    const token = await getToken();
     if (!token) return null;
     const data = await apiRequest('/auth/me');
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data;
   } catch {
-    await AsyncStorage.removeItem(TOKEN_KEY);
+    await deleteToken();
     await AsyncStorage.removeItem(USER_KEY);
     return null;
   }
@@ -75,7 +96,7 @@ export const requestResetCode = async (phone) => {
 };
 
 export const logout = async () => {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  await deleteToken();
   await AsyncStorage.removeItem(USER_KEY);
 };
 

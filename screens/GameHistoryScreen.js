@@ -129,6 +129,22 @@ export default function GameHistoryScreen({ navigation, route }) {
               }]}>
                 {(item.status || '').toUpperCase()}
               </Text>
+              {item._role === 'joined' && (
+                <TouchableOpacity
+                  style={s.rateBtn}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    navigation.navigate('RatePlayer', {
+                      targetUid: item.creatorId,
+                      targetName: item.creatorName || 'Organizer',
+                      broadcastId: item.id,
+                    });
+                  }}
+                >
+                  <Ionicons name="star" size={14} color="#f59e0b" />
+                  <Text style={s.rateBtnText}>Rate</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </TouchableOpacity>
         )}
@@ -169,8 +185,13 @@ const s = StyleSheet.create({
   cardCreator: { fontSize: 16, fontWeight: '700', color: '#e2e8f0', marginBottom: 6 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   metaText: { color: '#64748b', fontSize: 13 },
-  statusRow: { marginTop: 8 },
+  statusRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusPill: { fontSize: 11, fontWeight: '700', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', overflow: 'hidden' },
+  rateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#f59e0b15', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  rateBtnText: { color: '#f59e0b', fontSize: 12, fontWeight: '700' },
   empty: { alignItems: 'center', marginTop: 60, gap: 8 },
   emptyText: { color: '#475569', fontSize: 16, fontWeight: '600' },
 });

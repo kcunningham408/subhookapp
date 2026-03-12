@@ -7,7 +7,7 @@ import {
   ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { createTeam, deleteTeam, getMyTeams, leaveTeam } from '../services/api';
+import { createTeam, deleteTeam, getMyTeams, inviteToTeam, leaveTeam, searchPlayers } from '../services/api';
 
 export default function TeamsScreen({ navigation, route }) {
   const { user } = route.params;
@@ -19,6 +19,10 @@ export default function TeamsScreen({ navigation, route }) {
   const [newColor, setNewColor] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [creating, setCreating] = useState(false);
+  const [manageTeam, setManageTeam] = useState(null);
+  const [inviteSearch, setInviteSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -74,6 +78,37 @@ export default function TeamsScreen({ navigation, route }) {
         } catch (e) { Alert.alert('Error', e.message); }
       }},
     ]);
+  };
+
+  const handleSearchPlayers = async (text) => {
+    setInviteSearch(text);
+    if (text.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await searchPlayers();
+      const results = (res.players || []).filter(p =>
+        p.uid !== user?.uid &&
+        p.name?.toLowerCase().includes(text.toLowerCase()) &&
+        !(manageTeam?.members || []).includes(p.uid)
+      );
+      setSearchResults(results.slice(0, 10));
+    } catch { setSearchResults([]); }
+    finally { setSearching(false); }
+  };
+
+  const handleInvite = async (playerId) => {
+    if (!manageTeam) return;
+    try {
+      await inviteToTeam(manageTeam.id, playerId);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Invited!', 'Player added to team.');
+      setInviteSearch('');
+      setSearchResults([]);
+      load();
+      setManageTeam(null);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    }
   };
 
   if (loading) {
@@ -143,7 +178,7 @@ export default function TeamsScreen({ navigation, route }) {
               <View style={s.cardActions}>
                 {isOwner ? (
                   <>
-                    <TouchableOpacity style={s.actionBtn} onPress={() => navigation.navigate('TeamDetail', { teamId: item.id, user })}>
+                    <TouchableOpacity style={s.actionBtn} onPress={() => { setManageTeam(item); setInviteSearch(''); setSearchResults([]); }}>
                       <Ionicons name="settings-outline" size={16} color="#3b82f6" />
                       <Text style={s.actionText}>Manage</Text>
                     </TouchableOpacity>
@@ -184,6 +219,48 @@ export default function TeamsScreen({ navigation, route }) {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Manage Team Modal */}
+      <Modal visible={!!manageTeam} transparent animationType="slide">
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setManageTeam(null)}>
+          <View style={s.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>{manageTeam?.name}</Text>
+
+            <Text style={s.manageLabel}>Members ({(manageTeam?.memberDetails || []).length})</Text>
+            {(manageTeam?.memberDetails || []).map(m => (
+              <View key={m.uid} style={s.memberRow}>
+                <View style={s.memberAvatar}>
+                  <Text style={s.memberAvatarText}>{(m.name || '?')[0].toUpperCase()}</Text>
+                </View>
+                <Text style={s.memberName}>{m.name}</Text>
+                {m.uid === manageTeam?.ownerId && (
+                  <View style={s.ownerBadge}><Text style={s.ownerText}>Owner</Text></View>
+                )}
+              </View>
+            ))}
+
+            <Text style={[s.manageLabel, { marginTop: 16 }]}>Invite Player</Text>
+            <TextInput
+              style={s.modalInput}
+              placeholder="Search by name..."
+              placeholderTextColor="#475569"
+              value={inviteSearch}
+              onChangeText={handleSearchPlayers}
+            />
+            {searching && <ActivityIndicator color="#3b82f6" style={{ marginVertical: 8 }} />}
+            {searchResults.map(p => (
+              <TouchableOpacity key={p.uid} style={s.searchResult} onPress={() => handleInvite(p.uid)}>
+                <View style={s.memberAvatar}>
+                  <Text style={s.memberAvatarText}>{(p.name || '?')[0].toUpperCase()}</Text>
+                </View>
+                <Text style={s.memberName}>{p.name}</Text>
+                <Ionicons name="add-circle" size={22} color="#10b981" />
+              </TouchableOpacity>
+            ))}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -248,4 +325,19 @@ const s = StyleSheet.create({
     justifyContent: 'center', marginTop: 8,
   },
   modalBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  manageLabel: { fontSize: 14, fontWeight: '700', color: '#94a3b8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  memberRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1e293b',
+  },
+  memberAvatar: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: '#1e293b',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  memberAvatarText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  memberName: { flex: 1, color: '#e2e8f0', fontSize: 15, fontWeight: '600' },
+  searchResult: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1e293b',
+  },
 });
