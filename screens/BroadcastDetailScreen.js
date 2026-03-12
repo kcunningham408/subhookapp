@@ -638,10 +638,10 @@ export default function BroadcastDetailScreen({ navigation, route }) {
         {comments.map((c, i) => (
           <View key={c.id || i} style={s.commentCard}>
             <View style={s.commentAvatar}>
-              <Text style={s.commentAvatarText}>{(c.authorName || '?')[0].toUpperCase()}</Text>
+              <Text style={s.commentAvatarText}>{(c.name || '?')[0].toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.commentName}>{c.authorName}</Text>
+              <Text style={s.commentName}>{c.name}</Text>
               <Text style={s.commentBody}>{c.text}</Text>
               <Text style={s.commentTime}>
                 {c.createdAt ? new Date(c.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}

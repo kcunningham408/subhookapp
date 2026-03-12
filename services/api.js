@@ -248,6 +248,13 @@ export const notifyFreeAgents = async (broadcastId, positionNeeded, message) => 
   });
 };
 
+export const invitePlayer = async (targetUserId, message) => {
+  return apiRequest('/invite-player', {
+    method: 'POST',
+    body: { targetUserId, message },
+  });
+};
+
 // ── Block / Report ──────────────────────────────────────────────────────────
 
 export const blockUser = async (blockedUserId) => {

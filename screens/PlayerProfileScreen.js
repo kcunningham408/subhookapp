@@ -6,7 +6,7 @@ import {
     ActivityIndicator,
     Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, notifyFreeAgents, reportUser } from '../services/api';
+import { blockUser, getOrCreateConversation, getProfile, getRatings, getUserStats, invitePlayer, reportUser } from '../services/api';
 
 const SKILL_COLORS = { Recreational: '#64748b', Intermediate: '#3b82f6', Competitive: '#8b5cf6', Elite: '#f59e0b' };
 
@@ -27,7 +27,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
         ]);
         setProfile(profRes.profile);
         setRatings(ratRes);
-        setStats(statRes);
+        setStats(statRes.stats || statRes);
       } catch (e) {
         console.warn('Profile load error', e);
       } finally {
@@ -185,7 +185,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
       </View>
 
       {/* Ratings */}
-      {ratings?.averages && (
+      {ratings?.avg && (
         <View style={s.ratingsSection}>
           <Text style={s.sectionTitle}>
             <Ionicons name="star" size={14} color="#f59e0b" />  Player Ratings
@@ -199,13 +199,13 @@ export default function PlayerProfileScreen({ navigation, route }) {
               <View key={r.key} style={s.ratingCard}>
                 <Ionicons name={r.icon} size={16} color="#f59e0b" />
                 <Text style={s.ratingValue}>
-                  {ratings.averages[r.key] ? ratings.averages[r.key].toFixed(1) : '—'}
+                  {ratings.avg[r.key] ? ratings.avg[r.key].toFixed(1) : '—'}
                 </Text>
                 <Text style={s.ratingLabel}>{r.label}</Text>
               </View>
             ))}
           </View>
-          <Text style={s.ratingCount}>{ratings.totalRatings || 0} rating(s)</Text>
+          <Text style={s.ratingCount}>{ratings?.count || 0} rating(s)</Text>
         </View>
       )}
 
@@ -285,7 +285,7 @@ export default function PlayerProfileScreen({ navigation, route }) {
                       text: 'Send Invite',
                       onPress: async () => {
                         try {
-                          await notifyFreeAgents(null, null, `${user.name} wants you to sub for a game!`);
+                          await invitePlayer(profileUid, `${user.name} wants you to sub for a game!`);
                           Alert.alert('Invite Sent!', `${profile.name} has been notified.`);
                         } catch (e) {
                           Alert.alert('Error', e.message);

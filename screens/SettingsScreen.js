@@ -18,7 +18,7 @@ const PREF_ITEMS = [
 ];
 
 export default function SettingsScreen({ navigation, route }) {
-  const { user, theme, setTheme } = route.params;
+  const { user } = route.params;
   const [prefs, setPrefs] = useState({
     newBroadcasts: true, messages: true, rosterUpdates: true, gameReminders: true, ratings: true,
   });
@@ -50,8 +50,6 @@ export default function SettingsScreen({ navigation, route }) {
     }
   };
 
-  const isDark = theme !== 'light';
-
   if (loading) {
     return <View style={s.center}><ActivityIndicator color="#3b82f6" size="large" /></View>;
   }
@@ -64,29 +62,6 @@ export default function SettingsScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={s.title}>Settings</Text>
       </LinearGradient>
-
-      {/* Theme */}
-      <Text style={s.sectionLabel}>APPEARANCE</Text>
-      <View style={s.card}>
-        <View style={s.row}>
-          <View style={s.rowLeft}>
-            <Ionicons name={isDark ? 'moon' : 'sunny'} size={20} color="#f59e0b" />
-            <View>
-              <Text style={s.rowLabel}>Dark Mode</Text>
-              <Text style={s.rowSub}>Toggle between dark and light themes</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[s.toggle, isDark && s.toggleOn]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setTheme(isDark ? 'light' : 'dark');
-            }}
-          >
-            <View style={[s.knob, isDark && s.knobOn]} />
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {/* Notifications */}
       <Text style={s.sectionLabel}>NOTIFICATIONS</Text>
