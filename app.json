@@ -15,10 +15,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibecmd.subhook",
-      "buildNumber": "27",
+      "buildNumber": "28",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "SubHook uses your location to show fields on the map and provide directions."
+        "NSLocationWhenInUseUsageDescription": "SubHook uses your location to show fields on the map and provide directions.",
+        "NSCalendarsUsageDescription": "SubHook can add games to your calendar so you never miss a game.",
+        "NSCalendarsFullAccessUsageDescription": "SubHook can add games to your calendar so you never miss a game."
       }
     },
     "android": {
